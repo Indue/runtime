@@ -39,10 +39,18 @@ jobs:
         run: |
           set -euxo pipefail
 
-          rm -rf "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src"
-          cp -a \
-            "$GITHUB_WORKSPACE/runtime-src" \
-            "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src"
+          TARGET="$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src"
+
+          rm -rf "$TARGET"
+
+          # Clone instead of copying so .git is self-contained inside the
+          # directory mounted into Docker.
+          git clone --no-local "$GITHUB_WORKSPACE/runtime-src" "$TARGET"
+
+          git -C "$TARGET" checkout --detach \
+            a91449d77ceb56fe000e198d1b8a75f68f0a4795
+
+          test -d "$TARGET/.git"
 
           test "$(git -C "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src" rev-parse HEAD)" = \
             "a91449d77ceb56fe000e198d1b8a75f68f0a4795"
