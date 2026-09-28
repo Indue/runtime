@@ -112,7 +112,16 @@ jobs:
           set -euxo pipefail
 
           docker compose build pdfium-build
-          docker compose run --rm pdfium-build
+
+          # build.sh runs `gn gen` with cwd /workspace (the viewer root), where
+          # depot_tools' gn wrapper cannot locate the PDFium checkout's
+          # buildtools/linux64/gn and recurses until killed. Point it at the
+          # checkout explicitly; the symlink covers the cwd-based lookup.
+          ln -sfn packages/pdfium/pdfium-src/buildtools \
+            "$GITHUB_WORKSPACE/viewer/buildtools"
+          docker compose run --rm \
+            -e CHROMIUM_BUILDTOOLS_PATH=/workspace/packages/pdfium/pdfium-src/buildtools \
+            pdfium-build
 
           # Hand the tree back to the runner user for the host-side steps.
           sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/viewer"
