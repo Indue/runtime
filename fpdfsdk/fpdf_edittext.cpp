@@ -709,7 +709,19 @@ FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
 
   float current = 0;
   for (size_t i = 0; i < codes.size(); ++i) {
-    font->AppendChar(&segments.back(), codes[i]);
+    // SetSegments() re-decodes the segment bytes with the font's encoding.
+    // Every code must encode to bytes that decode back to exactly that one
+    // code, otherwise the rebuilt glyph run would differ from |codes| and the
+    // positions would be applied to the wrong glyphs.
+    ByteString encoded;
+    font->AppendChar(&encoded, codes[i]);
+    size_t decoded_length = 0;
+    if (font->GetNextChar(encoded.AsStringView(), &decoded_length) !=
+            codes[i] ||
+        decoded_length != encoded.GetLength()) {
+      return false;
+    }
+    segments.back() += encoded;
 
     if (i + 1 == codes.size()) {
       break;
