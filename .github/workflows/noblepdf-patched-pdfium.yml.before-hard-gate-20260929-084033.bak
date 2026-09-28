@@ -10,15 +10,6 @@ on:
       - "fpdfsdk/fpdf_edittext.cpp"
       - "public/fpdf_edit.h"
       - "noblepdf/phase8/**"
-  pull_request:
-    branches:
-      - noblepdf-setpositions-claude-audit
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - ".github/workflows/noblepdf-patched-pdfium.yml"
-      - "fpdfsdk/fpdf_edittext.cpp"
-      - "public/fpdf_edit.h"
-      - "noblepdf/phase8/**"
   workflow_dispatch:
 
 permissions:
@@ -358,61 +349,5 @@ jobs:
         with:
           name: noblepdf-phase8-report-${{ github.sha }}
           path: noblepdf/phase8/out/
-          if-no-files-found: warn
-          retention-days: 30
-
-  browser-hard-gate:
-    name: Browser True Edit hard gate
-    needs: build-patched-pdfium
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-
-    steps:
-      - name: Checkout hard-gate suite
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          sparse-checkout: |
-            noblepdf/phase8/browser-hard
-
-      - name: Download patched engine from this run
-        uses: actions/download-artifact@v4
-        with:
-          name: noblepdf-pdfium-2.15.1-setpositions-${{ github.sha }}
-          path: engine
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install independent PDF validators
-        shell: bash
-        run: |
-          set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends qpdf poppler-utils
-          qpdf --version
-          pdftotext -v 2>&1 | head -2
-
-      - name: Run browser True Edit hard gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          sha256sum engine/pdfium.wasm engine/index.js noblepdf/phase8/browser-hard/true-edit-phase8.js
-          set +e
-          NOBLEPDF_REQUIRE_EXTERNAL=1 node noblepdf/phase8/browser-hard/run-hard.mjs \
-            --engine "$GITHUB_WORKSPACE/engine" \
-            --out "$GITHUB_WORKSPACE/noblepdf/phase8/browser-hard/out"
-          status=$?
-          set -e
-          cat noblepdf/phase8/browser-hard/out/report.md >> "$GITHUB_STEP_SUMMARY"
-          exit $status
-
-      - name: Upload browser hard-gate report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: noblepdf-browser-hard-report-${{ github.sha }}
-          path: noblepdf/phase8/browser-hard/out/
           if-no-files-found: warn
           retention-days: 30

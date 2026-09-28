@@ -4,7 +4,7 @@
 // behaviour until editor-desktop.js / editor-touch.js explicitly call it.
 
 const ENGINE_BASE = '/vendor/pdfium-2.15.1-setpositions/';
-const ENGINE_TAG = 'noblepdf-true-edit-phase8-v1.2';
+const ENGINE_TAG = 'noblepdf-true-edit-phase8-v1.3';
 
 const GAP_MAX_EM = 0.08;
 const PDFJS_MAX_EM = 0.095;
@@ -16,6 +16,103 @@ let enginePromise = null;
 function finite(v){ return Number.isFinite(Number(v)); }
 function normText(v){ return String(v ?? '').replace(/\s+/g,' ').trim(); }
 function codepoints(s){ return Array.from(String(s ?? '')).map(ch=>ch.codePointAt(0)); }
+function oneBmpCodepoint(s){
+  const cps=codepoints(s);
+  return cps.length===1&&cps[0]<=0xFFFF ? cps[0] : null;
+}
+
+function sourceMetricModel(edit){
+  const plan=Array.isArray(edit?.sourceGlyphPlan)?edit.sourceGlyphPlan:[];
+  if(!plan.length) return {ok:false,reason:'trusted PDF.js source glyph metrics are unavailable'};
+
+  const glyphs=[];
+  let adjustments=0;
+  let lastGlyph=-1;
+  for(const entry of plan){
+    if(entry?.type==='glyph'){
+      const cp=oneBmpCodepoint(entry.unicode);
+      const width=Number(entry.width);
+      if(cp==null) return {ok:false,reason:'source glyph plan contains a non-single-BMP glyph'};
+      if(!Number.isFinite(width)||width<=0) return {ok:false,reason:`source glyph width unavailable for U+${cp.toString(16).toUpperCase()}`};
+      if(entry.isInFont===false) return {ok:false,reason:`source font reports U+${cp.toString(16).toUpperCase()} is not in the font`};
+      glyphs.push({cp,width,adjustAfter:0});
+      lastGlyph=glyphs.length-1;
+      continue;
+    }
+    if(entry?.type==='adjust'){
+      const value=Number(entry.value);
+      if(lastGlyph<0||!Number.isFinite(value)) return {ok:false,reason:'source TJ adjustment metadata is invalid'};
+      glyphs[lastGlyph].adjustAfter+=value;
+      adjustments++;
+      continue;
+    }
+    return {ok:false,reason:'source glyph plan contains an unsupported entry'};
+  }
+
+  const originalCodes=codepoints(edit.originalText);
+  if(glyphs.length!==originalCodes.length)
+    return {ok:false,reason:'source glyph plan does not map one-to-one to the original text'};
+  for(let i=0;i<originalCodes.length;i++){
+    if(glyphs[i].cp!==originalCodes[i])
+      return {ok:false,reason:'source glyph plan text does not exactly match the original PDF text'};
+  }
+
+  const declaredCount=Number(edit.sourceGlyphCount||0);
+  if(declaredCount>0&&declaredCount!==glyphs.length)
+    return {ok:false,reason:'source glyph count disagrees with the PDF.js glyph plan'};
+  if(edit.sourceAdjustmentCount!=null&&Number.isFinite(Number(edit.sourceAdjustmentCount))&&Number(edit.sourceAdjustmentCount)!==adjustments)
+    return {ok:false,reason:'source TJ adjustment count disagrees with the PDF.js glyph plan'};
+
+  const metrics=new Map();
+  const addMetric=(cp,width,label)=>{
+    const prior=metrics.get(cp);
+    if(prior!=null&&Math.abs(prior-width)>1e-4)
+      return `${label} disagrees with another trusted width for U+${cp.toString(16).toUpperCase()}`;
+    metrics.set(cp,width);
+    return '';
+  };
+  for(const g of glyphs){
+    const err=addMetric(g.cp,g.width,'source glyph plan');
+    if(err) return {ok:false,reason:err};
+  }
+
+  const extra=Array.isArray(edit.sourceFontMetrics)?edit.sourceFontMetrics:[];
+  for(const entry of extra){
+    const cp=oneBmpCodepoint(entry?.unicode);
+    const width=Number(entry?.width);
+    if(cp==null||!Number.isFinite(width)||width<=0)
+      return {ok:false,reason:'trusted source font metric metadata is invalid'};
+    if(entry.isInFont===false)
+      return {ok:false,reason:`source font reports U+${cp.toString(16).toUpperCase()} is not in the font`};
+    const err=addMetric(cp,width,'source font metric');
+    if(err) return {ok:false,reason:err};
+  }
+
+  return {ok:true,glyphs,metrics,adjustments};
+}
+
+function validateSourceSpacing({glyphs,oldXs,oldCodes,run}){
+  if(glyphs.length!==oldCodes.length||oldXs.length!==oldCodes.length)
+    return {ok:false,reason:'source spacing metadata length mismatch'};
+  const tolerancePt=Math.max(0.035,Number(run.size||0)*0.002);
+  let worst={error:0,index:-1,measured:0,expected:0};
+  for(let i=0;i+1<oldCodes.length;i++){
+    const measured=oldXs[i+1]-oldXs[i];
+    let expected=(glyphs[i].width*run.size)/1000 + run.tc;
+    if(oldCodes[i]===32) expected+=run.tw;
+    // PDF TJ numbers move the next glyph by -value/1000 * fontSize.
+    expected-=(glyphs[i].adjustAfter*run.size)/1000;
+    const error=Math.abs(measured-expected);
+    if(error>worst.error) worst={error,index:i,measured,expected};
+  }
+  if(worst.error>tolerancePt){
+    return {
+      ok:false,
+      reason:`source spacing disagrees with PDF geometry at glyph ${worst.index} (${worst.error.toFixed(4)}pt > ${tolerancePt.toFixed(4)}pt)`
+    };
+  }
+  return {ok:true,worstError:worst.error,tolerancePt};
+}
 
 function encodeUtf16z(str){
   const out = new Uint8Array((str.length + 1) * 2);
@@ -253,6 +350,12 @@ class BrowserPdfium {
       return !!this.m.FPDFText_SetText(obj,ptr);
     });
   }
+  freshTextObjText(page,obj){
+    const textPage=this.m.FPDFText_LoadPage(page);
+    if(!textPage) throw new Error('PDFium could not reload the text layer for round-trip verification');
+    try{return this.textObjText(obj,textPage);}
+    finally{this.m.FPDFText_ClosePage(textPage);}
+  }
   setPositions(obj,positions){
     return this.withAlloc(Math.max(4,positions.length*4),ptr=>{
       this.p.HEAPF32.set(positions,ptr>>2);
@@ -384,13 +487,10 @@ function validateEditInput(edit){
   if(cps.length<2) return 'single-glyph text objects stay on the existing fallback in V1';
   if(cps.some(cp=>cp>0xFFFF)) return 'supplementary Unicode characters stay on the existing fallback in V1';
 
-  // Phase 8 validated fractional-width PDFs as a BLOCK condition. PDF.js stores
-  // source glyph widths in the glyph plan, so reject obviously fractional source
-  // metrics here before touching the object.
-  const plan=Array.isArray(edit.sourceGlyphPlan)?edit.sourceGlyphPlan:[];
-  const widths=plan.filter(x=>x?.type==='glyph'&&finite(x.width)).map(x=>Number(x.width));
-  if(widths.some(w=>Math.abs(w-Math.round(w))>1e-5))
-    return 'fractional source font widths are blocked by the Phase 8 production gate';
+  if(!Object.prototype.hasOwnProperty.call(edit,'charSpacing')||!finite(edit.charSpacing))
+    return 'trusted source character-spacing metadata is unavailable';
+  if(!Object.prototype.hasOwnProperty.call(edit,'wordSpacing')||!finite(edit.wordSpacing))
+    return 'trusted source word-spacing metadata is unavailable';
 
   return '';
 }
@@ -442,32 +542,47 @@ async function mutatePage(E,doc,edit,usedObjects){
     const newCodes=codepoints(edit.newText);
     const font=target.font;
 
-    const widthCache=new Map();
-    const widthOf=unicode=>{
-      if(widthCache.has(unicode)) return widthCache.get(unicode);
-      const w=E.glyphWidth1000(font,unicode);
-      if(!Number.isFinite(w)||w<=0) throw new Error(`invalid glyph width for U+${unicode.toString(16).toUpperCase()}`);
-      // K1/K2 production gate: fractional /Widths or W values remain blocked.
-      if(Math.abs(w-Math.round(w))>1e-4)
-        throw new Error(`fractional glyph width blocked for U+${unicode.toString(16).toUpperCase()}`);
-      widthCache.set(unicode,w);
-      return w;
-    };
+    const sourceMetrics=sourceMetricModel(edit);
+    if(!sourceMetrics.ok) return {ok:false,reason:sourceMetrics.reason};
 
-    // Prime widths before mutating anything.
-    [...new Set([...oldCodes,...newCodes])].forEach(widthOf);
-
-    const tc=Number(edit.charSpacing||0);
-    const tw=Number(edit.wordSpacing||0);
-    if(tw!==0 && edit.newText.includes(' '))
+    const tc=Number(edit.charSpacing);
+    const tw=Number(edit.wordSpacing);
+    if(tw!==0 && (String(edit.originalText).includes(' ')||edit.newText.includes(' ')))
       return {ok:false,reason:'non-zero word spacing with spaces stays on the fallback until simple/CID font classification is wired'};
+
+    const requiredCodes=[...new Set([...oldCodes,...newCodes])];
+    const widthCache=new Map();
+    for(const unicode of requiredCodes){
+      const trusted=sourceMetrics.metrics.get(unicode);
+      if(!Number.isFinite(trusted)||trusted<=0)
+        return {ok:false,reason:`trusted source font metric unavailable for U+${unicode.toString(16).toUpperCase()}`};
+      // K1/K2 gate must use PDF.js/raw source metrics, not PDFium's already
+      // integer-loaded width table.
+      if(Math.abs(trusted-Math.round(trusted))>1e-5)
+        return {ok:false,reason:`fractional source font width blocked for U+${unicode.toString(16).toUpperCase()}`};
+      const engineWidth=E.glyphWidth1000(font,unicode);
+      if(!Number.isFinite(engineWidth)||engineWidth<=0)
+        return {ok:false,reason:`PDFium has no usable glyph width for U+${unicode.toString(16).toUpperCase()}`};
+      if(Math.abs(engineWidth-trusted)>0.05)
+        return {ok:false,reason:`source/PDFium font metric mismatch for U+${unicode.toString(16).toUpperCase()}`};
+      widthCache.set(unicode,trusted);
+    }
+    const widthOf=unicode=>widthCache.get(unicode);
 
     const run={
       size:target.fontSize,
-      tc:Number.isFinite(tc)?tc:0,
-      tw:Number.isFinite(tw)?tw:0,
+      tc,
+      tw,
       fontIsSimple:true
     };
+
+    const spacing=validateSourceSpacing({
+      glyphs:sourceMetrics.glyphs,
+      oldXs:conv.xs,
+      oldCodes,
+      run
+    });
+    if(!spacing.ok) return {ok:false,reason:spacing.reason};
 
     const layout=layoutReplacement({
       oldCodes,oldXs:conv.xs,newCodes,newText:edit.newText,run,widthOf,fit:false
@@ -481,6 +596,10 @@ async function mutatePage(E,doc,edit,usedObjects){
 
     if(!E.setText(target.obj,edit.newText))
       return {ok:false,reason:'FPDFText_SetText rejected the replacement'};
+
+    const roundTrip=E.freshTextObjText(page,target.obj);
+    if(roundTrip!==edit.newText)
+      return {ok:false,reason:`FPDFText_SetText did not round-trip exactly (${JSON.stringify(roundTrip)})`};
 
     if(!E.setPositions(target.obj,layout.xs.slice(1)))
       return {ok:false,reason:'FPDFText_SetPositions rejected the replacement'};
@@ -509,7 +628,7 @@ export async function preflight(){
       ok:true,
       setPositions:typeof E.m.FPDFText_SetPositions==='function',
       engineBase:ENGINE_BASE,
-      version:'phase8-browser-bridge-v1.2'
+      version:'phase8-browser-bridge-v1.3'
     };
   }catch(err){
     return {ok:false,reason:String(err?.message||err)};
@@ -521,7 +640,7 @@ export async function preflight(){
 //   pageIndex: 1-based original PDF page,
 //   originalText, newText,
 //   sourceTextTransform, pdfDeclaredFontSize,
-//   sourceGlyphCount, sourceGlyphPlan,
+//   sourceGlyphCount, sourceGlyphPlan, sourceAdjustmentCount, sourceFontMetrics,
 //   charSpacing, wordSpacing, verticalText,
 //   matchOriginal, autoFit
 // }
@@ -559,7 +678,7 @@ export async function tryTrueEditPdf(sourceBytes,edits){
       bytes,
       results,
       stats:{trueEdited:results.length,fallback:0},
-      version:'phase8-browser-bridge-v1.2'
+      version:'phase8-browser-bridge-v1.3'
     };
   }catch(err){
     return {ok:false,reason:String(err?.message||err),results};
@@ -571,5 +690,5 @@ export async function tryTrueEditPdf(sourceBytes,edits){
 export const TrueEditPhase8 = Object.freeze({
   preflight,
   tryTrueEditPdf,
-  version:'phase8-browser-bridge-v1.2'
+  version:'phase8-browser-bridge-v1.3'
 });

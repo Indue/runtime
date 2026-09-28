@@ -52,13 +52,26 @@ function runContent(r){
   return parts.join(' ');
 }
 
-function buildPdf(runs){
+function pdfNum(v){
+  const n=Number(v);
+  if(!Number.isFinite(n)) die(`non-finite PDF number ${v}`);
+  return Number.isInteger(n)?String(n):String(n).replace(/0+$/,'').replace(/\.$/,'');
+}
+
+function buildPdf(runs,{fontWidths=null}={}){
   const content = runs.map(runContent).join('\n')+'\n';
   const objs=[];
   objs[1]='<< /Type /Catalog /Pages 2 0 R >>';
   objs[2]='<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
   objs[3]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>';
-  objs[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  if(fontWidths){
+    const first=32,last=126;
+    const widths=[];
+    for(let c=first;c<=last;c++) widths.push(pdfNum(Object.prototype.hasOwnProperty.call(fontWidths,c)?fontWidths[c]:600));
+    objs[4]=`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding /FirstChar ${first} /LastChar ${last} /Widths [${widths.join(' ')}] >>`;
+  }else{
+    objs[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  }
   objs[5]=`<< /Length ${Buffer.byteLength(content,'latin1')} >>\nstream\n${content}endstream`;
 
   let out='%PDF-1.7\n%\xE2\xE3\xCF\xD3\n';
@@ -163,25 +176,71 @@ async function loadBridge(){
   return import(pathToFileURL(temp).href+`?v=${Date.now()}`);
 }
 
-function descriptor(E,ins,objectIndex,newText,overrides={}){
+function runPlan(run,widthFor){
+  const entries=[];
+  let glyphCount=0,adjustmentCount=0;
+  const show=run?.show??run?.text??'';
+  const items=typeof show==='string'?[show]:show;
+  for(const item of items){
+    if(typeof item==='number'){
+      entries.push({type:'adjust',value:Number(item)});
+      adjustmentCount++;
+      continue;
+    }
+    for(const ch of String(item??'')){
+      const cp=ch.codePointAt(0);
+      entries.push({type:'glyph',unicode:ch,fontChar:ch,width:widthFor(cp),isSpace:cp===32,isInFont:true});
+      glyphCount++;
+    }
+  }
+  return {entries,glyphCount,adjustmentCount};
+}
+
+function descriptor(E,ins,objectIndex,newText,{run,overrides={},fontWidths=null,omitMetricChars=[],dropAdjustments=false,deleteFields=[]}={}){
   const o=ins.objects.find(x=>x.index===objectIndex);
   if(!o||o.type!==1) die(`text object ${objectIndex} not found`);
-  const plan=o.glyphs.map(g=>({type:'glyph',unicode:String.fromCodePoint(g.unicode),width:Math.round(ins.glyphWidth(o.font,g.unicode)),isSpace:g.unicode===32}));
-  return {
+  const widthFor=cp=>{
+    if(fontWidths&&Object.prototype.hasOwnProperty.call(fontWidths,cp)) return Number(fontWidths[cp]);
+    return Number(ins.glyphWidth(o.font,cp));
+  };
+  const plan=runPlan(run??{text:o.text},widthFor);
+  if(dropAdjustments){
+    plan.entries=plan.entries.filter(x=>x.type!=='adjust');
+    plan.adjustmentCount=0;
+  }
+  const omit=new Set(omitMetricChars.map(x=>typeof x==='number'?x:String(x).codePointAt(0)));
+  const metrics=[];
+  const seen=new Set();
+  for(const ch of String(newText)){
+    const cp=ch.codePointAt(0);
+    if(omit.has(cp)||seen.has(cp)) continue;
+    seen.add(cp);
+    metrics.push({unicode:ch,width:widthFor(cp),isInFont:true});
+  }
+  const d={
     pageIndex:1,
     originalText:o.text,
     newText,
     sourceTextTransform:[o.matrix.a,o.matrix.b,o.matrix.c,o.matrix.d,o.glyphs[0]?.x??o.matrix.e,o.glyphs[0]?.y??o.matrix.f],
     pdfDeclaredFontSize:o.fontSize,
-    sourceGlyphCount:o.glyphs.length,
-    sourceGlyphPlan:plan,
-    charSpacing:0,wordSpacing:0,verticalText:false,matchOriginal:true,autoFit:false,
+    sourceGlyphCount:plan.glyphCount,
+    sourceGlyphPlan:plan.entries,
+    sourceAdjustmentCount:plan.adjustmentCount,
+    sourceFontMetrics:metrics,
+    charSpacing:Number(run?.tc??0),wordSpacing:Number(run?.tw??0),verticalText:false,matchOriginal:true,autoFit:false,
     ...overrides,
   };
+  for(const key of deleteFields) delete d[key];
+  return d;
 }
 
 const deg=d=>d*Math.PI/180;
 const rot=(d,x,y)=>[Math.cos(deg(d)),Math.sin(deg(d)),-Math.sin(deg(d)),Math.cos(deg(d)),x,y].map(v=>+v.toFixed(8));
+
+const fracOldWidths=Object.fromEntries(Array.from({length:95},(_,i)=>[32+i,600]));
+fracOldWidths['F'.codePointAt(0)]=600.5;
+const fracNewWidths=Object.fromEntries(Array.from({length:95},(_,i)=>[32+i,600]));
+fracNewWidths['A'.codePointAt(0)]=600.5;
 
 const CASES=[
   {id:'P1',title:'same-length real text',runs:[{text:'HELLO',size:28,tm:[1,0,0,1,160,620]}],edits:[{obj:0,newText:'HALLO'}],expect:'pass'},
@@ -191,9 +250,9 @@ const CASES=[
   {id:'P5',title:'rotated object',runs:[{text:'ROTATE',size:20,tm:rot(27,180,460)}],edits:[{obj:0,newText:'REROUTE'}],expect:'pass',popplerBag:true},
   {id:'P6',title:'repeated text, distinct baselines',runs:[{text:'TOTAL',size:16,tm:[1,0,0,1,72,700]},{text:'TOTAL',size:16,tm:[1,0,0,1,72,500]}],edits:[{obj:1,newText:'TALLY'}],expect:'pass',oldCountAfter:{TOTAL:1}},
   {id:'P7',title:'two edits on one page',runs:[{text:'ALPHA',size:16,tm:[1,0,0,1,72,700]},{text:'BETA',size:16,tm:[1,0,0,1,72,650]}],edits:[{obj:0,newText:'OMEGA'},{obj:1,newText:'DELTA'}],expect:'pass'},
-  {id:'P8',title:'character spacing',runs:[{text:'TRACK',size:18,tc:0.6,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'TRACE',overrides:{charSpacing:0.6}}],expect:'pass'},
+  {id:'P8',title:'character spacing verified against geometry',runs:[{text:'TRACK',size:18,tc:0.6,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'TRACE'}],expect:'pass'},
   {id:'P9',title:'horizontal text scale',runs:[{text:'SCALE',size:18,tz:73,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'WIDTH'}],expect:'pass'},
-  {id:'P10',title:'existing TJ segmentation',runs:[{show:['TO',-120,'KEN'],size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'TAKEN'}],expect:'pass'},
+  {id:'P10',title:'existing TJ segmentation verified',runs:[{show:['TO',-120,'KEN'],size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'TAKEN'}],expect:'pass'},
 
   {id:'R1',title:'ambiguous overlapping duplicates',runs:[{text:'DUP',size:18,tm:[1,0,0,1,72,700]},{text:'DUP',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'DUN'}],expect:'reject',reason:/more than one|uniquely locate|matched|overlapping text objects/i},
   {id:'R2',title:'custom formatting blocked',runs:[{text:'STYLE',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'STYLED',overrides:{matchOriginal:false}}],expect:'reject',reason:/custom formatting/i},
@@ -201,12 +260,18 @@ const CASES=[
   {id:'R4',title:'vertical-text metadata blocked',runs:[{text:'VERTICAL',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'VERT',overrides:{verticalText:true}}],expect:'reject',reason:/vertical text/i},
   {id:'R5',title:'single-glyph target blocked',runs:[{text:'X',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'Y'}],expect:'reject',reason:/single-glyph/i},
   {id:'R6',title:'supplementary Unicode blocked',runs:[{text:'AB',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'A😀'}],expect:'reject',reason:/supplementary Unicode/i},
-  {id:'R7',title:'non-zero Tw with spaces blocked',runs:[{text:'RED BLUE',size:18,tw:2,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'RED GREEN',overrides:{wordSpacing:2}}],expect:'reject',reason:/word spacing/i},
-  {id:'R8',title:'fractional source metrics blocked',runs:[{text:'FRACTION',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'FRACTIONS',fractionalPlan:true}],expect:'reject',reason:/fractional source font widths/i},
+  {id:'R7',title:'non-zero Tw with spaces blocked',runs:[{text:'RED BLUE',size:18,tw:2,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'RED GREEN'}],expect:'reject',reason:/word spacing/i},
+  {id:'R8a',title:'real fractional source /Widths used by old glyph blocked',fontWidths:fracOldWidths,runs:[{text:'FRACTION',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'FRACTIONS'}],expect:'reject',reason:/fractional source font width/i,assertFractionalPdf:true},
+  {id:'R8b',title:'real fractional source /Widths used only by newly typed glyph blocked',fontWidths:fracNewWidths,runs:[{text:'HELLO',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'HALLO'}],expect:'reject',reason:/fractional source font width/i,assertFractionalPdf:true},
   {id:'R9',title:'missing source object blocked',runs:[{text:'FOUND',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'NEW',overrides:{originalText:'MISSING'}}],expect:'reject',reason:/locate|matched/i},
   {id:'R10',title:'degenerate matrix blocked',runs:[{text:'DEGENERATE',size:18,tm:[1,0,2,0,72,500]}],edits:[{obj:0,newText:'BLOCKED'}],expect:'reject',reason:/geometry|degenerate|baseline|locate/i},
   {id:'R11',title:'multi-edit fail closed when later edit is ambiguous',runs:[{text:'ALPHA',size:18,tm:[1,0,0,1,72,740]},{text:'DUP',size:18,tm:[1,0,0,1,72,650]},{text:'DUP',size:18,tm:[1,0,0,1,72,650]}],edits:[{obj:0,newText:'OMEGA'},{obj:1,newText:'DUN'}],expect:'reject',reason:/more than one|uniquely locate|matched|overlapping text objects/i},
   {id:'R12',title:'empty replacement blocked',runs:[{text:'DELETE',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:''}],expect:'reject',reason:/empty/i},
+  {id:'R13',title:'new glyph without trusted source metric blocked',runs:[{text:'HELLO',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'HALLO',omitMetricChars:['A']}],expect:'reject',reason:/trusted source font metric unavailable/i},
+  {id:'R14',title:'missing Tc metadata blocked',runs:[{text:'TRACK',size:18,tc:0.6,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'TRACE',deleteFields:['charSpacing']}],expect:'reject',reason:/character-spacing metadata/i},
+  {id:'R15',title:'wrong Tc metadata disagrees with original geometry',runs:[{text:'TRACK',size:18,tc:0.6,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'TRACE',overrides:{charSpacing:0}}],expect:'reject',reason:/source spacing disagrees/i},
+  {id:'R16',title:'unmappable BMP Unicode rejected by SetText round-trip',runs:[{text:'ABLO',size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'AĀLO'}],expect:'reject',reason:/did not round-trip exactly/i},
+  {id:'R17',title:'missing TJ adjustment cannot be mistaken for Tc',runs:[{show:['TO',-120,'KEN'],size:18,tm:[1,0,0,1,72,700]}],edits:[{obj:0,newText:'TAKEN',dropAdjustments:true}],expect:'reject',reason:/source spacing disagrees/i},
 ];
 
 function externalTool(name,args,file){
@@ -226,16 +291,24 @@ for(const tc of CASES){
   const checks=[];
   const add=(name,pass,detail='')=>checks.push({name,pass:!!pass,detail});
   try{
-    const source=buildPdf(tc.runs);
+    const source=buildPdf(tc.runs,{fontWidths:tc.fontWidths||null});
     const sourceHash=sha256(source);
     const before=E.inspect(source);
     add('source opens in PDFium',true,`${before.census.text} text objects`);
     add('source has no image objects',before.census.image===0,JSON.stringify(before.census));
+    if(tc.assertFractionalPdf){
+      add('fixture contains a real fractional /Widths entry',/\/Widths\s*\[[^\]]*\d+\.\d+/s.test(dec.decode(source)));
+    }
     const descriptors=[];
     for(const e of tc.edits){
-      const d=descriptor(E,before,e.obj,e.newText,e.overrides||{});
-      if(e.fractionalPlan && d.sourceGlyphPlan.length) d.sourceGlyphPlan[0]={...d.sourceGlyphPlan[0],width:500.5};
-      descriptors.push(d);
+      descriptors.push(descriptor(E,before,e.obj,e.newText,{
+        run:tc.runs[e.obj],
+        overrides:e.overrides||{},
+        fontWidths:tc.fontWidths||null,
+        omitMetricChars:e.omitMetricChars||[],
+        dropAdjustments:!!e.dropAdjustments,
+        deleteFields:e.deleteFields||[]
+      }));
     }
 
     const out=await bridge.tryTrueEditPdf(source,descriptors);
@@ -336,7 +409,7 @@ const md=[
   '', '## Coverage', '',
   '- same-length, longer, shorter, spaces, rotation, tracking, horizontal scale and TJ-segmented text',
   '- repeated identical text at different positions and multiple edits on one page',
-  '- ambiguity, custom formatting, auto-fit, vertical metadata, single glyphs, supplementary Unicode, Tw, fractional metrics, missing targets, degenerate matrices and fail-closed multi-edit rejection',
+  '- ambiguity, custom formatting, auto-fit, vertical metadata, single glyphs, supplementary Unicode, Tw, real fractional /Widths, missing trusted metrics, Tc/TJ mismatches, unmappable Unicode, missing targets, degenerate matrices and fail-closed multi-edit rejection',
   '- PDFium reopen/search/copy semantics, exact text-object replacement, unchanged object census, no raster images, anchored start origin and untouched-object invariants',
   '- qpdf structural validation and independent Poppler text extraction in CI',
 ];
