@@ -113,15 +113,89 @@ jobs:
 
           docker compose build pdfium-build
 
-          # build.sh runs `gn gen` with cwd /workspace (the viewer root), where
-          # depot_tools' gn wrapper cannot locate the PDFium checkout's
-          # buildtools/linux64/gn and recurses until killed. Point it at the
-          # checkout explicitly; the symlink covers the cwd-based lookup.
-          ln -sfn packages/pdfium/pdfium-src/buildtools \
-            "$GITHUB_WORKSPACE/viewer/buildtools"
-          docker compose run --rm \
-            -e CHROMIUM_BUILDTOOLS_PATH=/workspace/packages/pdfium/pdfium-src/buildtools \
-            pdfium-build
+          # EmbedPDF's CI entrypoint (scripts/build.sh) cannot generate a
+          # fresh build: it runs `gn gen "$OUT" --root "$SRC"` with cwd
+          # /workspace. From there depot_tools' gn wrapper cannot find the
+          # checkout's DEPS-pinned buildtools/linux64/gn and falls back to
+          # the `gn` on PATH (itself), recursing until killed (run 3). Even
+          # when GN is found, `--root SRC` without '=' makes SRC a second
+          # build dir ("Need exactly one build directory", run 4).
+          # The maintainers build with scripts/dev.sh, which runs gn gen from
+          # $SRC ("running from elsewhere with --root causes issues"). Use
+          # dev.sh's sync + gn gen verbatim, then build.sh's one-shot build,
+          # export and copy steps verbatim. EmbedPDF's files are not modified.
+          cat > scripts/noblepdf-build.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          set -x
+
+          ROOT=/workspace
+          SRC=$ROOT/packages/pdfium/pdfium-src
+          OUT=$SRC/out/wasm
+          PDFIUM=$ROOT/packages/pdfium
+          export ROOT SRC OUT PDFIUM
+          mkdir -p $OUT
+          export PATH="$HOME/.cargo/bin:$PATH"
+
+          # --- dev.sh step 0 (verbatim) ---------------------------------------
+          if [[ ! -d "$SRC/third_party/llvm-build" ]]; then
+            cat > "$ROOT/.gclient" <<'GCLIENT'
+          solutions = [
+            { "name": "packages/pdfium/pdfium-src",
+              "url":  "https://pdfium.googlesource.com/pdfium.git",
+              "deps_file": "DEPS",
+              "managed": False,
+              "custom_deps": {},
+            },
+          ]
+          GCLIENT
+            ( cd "$ROOT/packages/pdfium/pdfium-src" && \
+              gclient sync --no-history --shallow --nohooks --deps=builder )
+            rm "$ROOT/.gclient"
+          fi
+
+          # --- dev.sh step 0.5 (verbatim) -------------------------------------
+          cp -f "$PDFIUM/build/patch/build/config/BUILDCONFIG.gn" \
+                "$SRC/build/config/BUILDCONFIG.gn"
+          cp -f "$PDFIUM/build/patch/build/toolchain/wasm/BUILD.gn" \
+                "$SRC/build/toolchain/wasm/BUILD.gn"
+
+          # --- dev.sh step 1 (verbatim): gn gen from the source directory ----
+          (
+            cd "$SRC" && \
+            gn gen out/wasm \
+              --args='is_debug=false treat_warnings_as_errors=false pdf_use_skia=false pdf_enable_xfa=false pdf_enable_v8=false is_component_build=false clang_use_chrome_plugins=false pdf_is_standalone=true use_debug_fission=false use_custom_libcxx=false use_sysroot=false pdf_is_complete_lib=true pdf_use_partition_alloc=false is_clang=false symbol_level=0 target_os="wasm" target_cpu="wasm"'
+          )
+
+          # --- build.sh one-shot build (verbatim) -----------------------------
+          gen_exports() {
+            local WS=$ROOT/packages/pdfium/build/wasm
+            rm -rf "$WS" && mkdir -p "$WS"
+            ( cd "$SRC" &&
+              find public -path public/cpp -prune -o -name '*.h' -print |
+              sort | sed 's|^|#include "|;s|$|"|' ) > "$WS/all.h"
+            echo '#include "../build/code/cpp/ext_api.h"' >> "$WS/all.h"
+            clang -std=c11 -I"$SRC" -I"$ROOT/build/code/cpp" \
+                  -fsyntax-only -Xclang -ast-dump=json "$WS/all.h" > "$WS/ast.json"
+            node "$PDFIUM/build/generate-functions.mjs"       "$WS/ast.json" "$WS"
+            node "$PDFIUM/build/generate-runtime-methods.mjs" "$WS"
+          }
+
+          cd "$SRC"
+          ninja -C "$OUT" pdfium -v
+          gen_exports
+
+          cd "$PDFIUM/build"
+          bash ./compile.esm.sh
+          bash ./compile.sh
+
+          cp -f ./wasm/{runtime-methods.ts,functions.ts,pdfium.wasm,pdfium.js,pdfium.cjs} "$PDFIUM/src/vendor/"
+          EOF
+          chmod +x scripts/noblepdf-build.sh
+          bash -n scripts/noblepdf-build.sh
+
+          docker compose run --rm --entrypoint /usr/bin/tini pdfium-build \
+            -- /workspace/packages/pdfium/scripts/noblepdf-build.sh
 
           # Hand the tree back to the runner user for the host-side steps.
           sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/viewer"
@@ -133,8 +207,6 @@ jobs:
         run: |
           set -uo pipefail
           docker image inspect embedpdf/pdfium-dev >/dev/null 2>&1 || exit 0
-          # The symlink added above must not mask the unmodified behaviour.
-          mv "$GITHUB_WORKSPACE/viewer/buildtools" /tmp/viewer-buildtools || true
           sudo chown -R 0:0 "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src"
           docker compose run --rm --entrypoint /bin/bash pdfium-build -c '
             set -u
@@ -164,7 +236,6 @@ jobs:
             (cd "$SRC" && env -u CHROMIUM_BUILDTOOLS_PATH timeout 20 gn --version 2>&1 | head -20)
           '
           sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/viewer"
-          mv /tmp/viewer-buildtools "$GITHUB_WORKSPACE/viewer/buildtools" || true
           exit 0
 
       - name: Verify generated SetPositions export
