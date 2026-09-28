@@ -9,6 +9,7 @@ on:
       - ".github/workflows/noblepdf-patched-pdfium.yml"
       - "fpdfsdk/fpdf_edittext.cpp"
       - "public/fpdf_edit.h"
+      - "noblepdf/phase8/**"
   workflow_dispatch:
 
 permissions:
@@ -51,7 +52,9 @@ jobs:
           git merge-base --is-ancestor "$PDFIUM_BASE" HEAD
 
           # Only these files may differ from the EmbedPDF 2.15.1 PDFium base.
-          ALLOWED='^(public/fpdf_edit\.h|fpdfsdk/fpdf_edittext\.cpp|\.github/workflows/noblepdf-patched-pdfium\.yml)$'
+          # noblepdf/phase8/ is the Node regression suite; it is not compiled
+          # into PDFium.
+          ALLOWED='^(public/fpdf_edit\.h|fpdfsdk/fpdf_edittext\.cpp|\.github/workflows/noblepdf-patched-pdfium\.yml|noblepdf/phase8/.*)$'
           git diff --name-only "$PDFIUM_BASE" HEAD | tee /tmp/changed-files.txt
           if grep -Ev "$ALLOWED" /tmp/changed-files.txt; then
             echo "::error::Files outside the SetPositions backport changed"
@@ -299,3 +302,52 @@ jobs:
           path: viewer/packages/pdfium/dist/
           if-no-files-found: error
           retention-days: 14
+
+  phase8-suite:
+    name: Phase 8 True Edit regression suite
+    needs: build-patched-pdfium
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout suite
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: noblepdf/phase8
+
+      - name: Download the patched engine built by this run
+        uses: actions/download-artifact@v4
+        with:
+          name: noblepdf-pdfium-2.15.1-setpositions-${{ github.sha }}
+          path: engine
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install suite dependencies
+        working-directory: noblepdf/phase8
+        run: npm ci --no-audit --no-fund
+
+      - name: Run Phase 8 suite against the patched engine
+        shell: bash
+        working-directory: noblepdf/phase8
+        run: |
+          set -euo pipefail
+          sha256sum "$GITHUB_WORKSPACE/engine/pdfium.wasm" "$GITHUB_WORKSPACE/engine/index.js"
+          set +e
+          node run.mjs --engine "$GITHUB_WORKSPACE/engine" --out out
+          status=$?
+          set -e
+          cat out/report.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+      - name: Upload Phase 8 report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: noblepdf-phase8-report-${{ github.sha }}
+          path: noblepdf/phase8/out/
+          if-no-files-found: warn
+          retention-days: 30

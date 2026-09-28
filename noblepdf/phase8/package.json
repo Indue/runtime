@@ -1,0 +1,15 @@
+{
+  "name": "noblepdf-phase8-suite",
+  "private": true,
+  "type": "module",
+  "description": "NoblePDF True Edit Phase 8 mutation/regression suite for the patched @embedpdf/pdfium 2.15.1 (FPDFText_SetPositions) engine.",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "0.1.80",
+    "@pdf-lib/fontkit": "1.1.1",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "4.10.38"
+  }
+}
