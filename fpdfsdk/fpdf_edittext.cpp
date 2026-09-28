@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <map>
 #include <memory>
@@ -692,7 +693,8 @@ FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
   }
 
   const float font_size = obj->GetFontSize();
-  if (codes.size() <= 1 || count != codes.size() - 1 || font_size == 0) {
+  if (codes.size() <= 1 || count != codes.size() - 1 || font_size == 0 ||
+      !std::isfinite(font_size)) {
     return false;
   }
 
@@ -722,8 +724,19 @@ FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
 
     current += char_space;
 
+    if (!std::isfinite(next_positions[i])) {
+      return false;
+    }
+
     const float kerning =
         (current - next_positions[i]) * 1000 / font_size;
+
+    // A non-finite adjustment would poison CalcPositionData() and be written
+    // out by SkFloatToDecimal() as 0 (NaN) or +/-FLT_MAX (Inf), so the saved
+    // file would not match the in-memory object. Fail before mutating.
+    if (!std::isfinite(kerning)) {
+      return false;
+    }
 
     if (kerning != 0) {
       kernings.push_back(kerning);
@@ -739,6 +752,7 @@ FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
 
   return true;
 }
+
 FPDF_EXPORT FPDF_FONT FPDF_CALLCONV FPDFText_LoadFont(FPDF_DOCUMENT document,
                                                       const uint8_t* data,
                                                       uint32_t size,
