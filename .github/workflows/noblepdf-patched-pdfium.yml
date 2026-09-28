@@ -200,44 +200,6 @@ jobs:
           # Hand the tree back to the runner user for the host-side steps.
           sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/viewer"
 
-      - name: Diagnose GN resolution inside the build container
-        if: always()
-        shell: bash
-        working-directory: viewer/packages/pdfium
-        run: |
-          set -uo pipefail
-          docker image inspect embedpdf/pdfium-dev >/dev/null 2>&1 || exit 0
-          sudo chown -R 0:0 "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src"
-          docker compose run --rm --entrypoint /bin/bash pdfium-build -c '
-            set -u
-            SRC=/workspace/packages/pdfium/pdfium-src
-            echo "== pwd: $(pwd)  SHLVL=$SHLVL"
-            echo "== PATH:"; echo "$PATH" | tr ":" "\n" | nl
-            echo "== type -a:"; for t in gn python3 vpython3 ninja gclient git; do type -a "$t" 2>&1; done
-            echo "== depot_tools commit:"; git -C /opt/depot-tools log -1 --format="%H %cd" 2>&1
-            echo "== /opt/depot-tools/gn:"; cat /opt/depot-tools/gn
-            echo "== /opt/depot-tools/gn.py:"; cat /opt/depot-tools/gn.py
-            echo "== gclient_paths.py (lookup functions):"
-            grep -n "def GetPrimarySolutionPath\|def GetBuildtoolsPath\|def GetBuildtoolsPlatformBinaryPath\|def FindGclientRoot\|def GetGClientPrimarySolutionName" -A30 /opt/depot-tools/gclient_paths.py
-            echo "== fetched GN:"; ls -la "$SRC/buildtools" "$SRC/buildtools/linux64" 2>&1
-            "$SRC/buildtools/linux64/gn" --version 2>&1
-            echo "== DEPS gn_version:"; grep -n "gn_version" "$SRC/DEPS"
-            for d in /workspace "$SRC"; do
-              echo "== gclient_paths from $d (no override):"
-              (cd "$d" && env -u CHROMIUM_BUILDTOOLS_PATH python3 -c "import sys; sys.path.insert(0, \"/opt/depot-tools\"); import gclient_paths as g; print(\"primary=\", g.GetPrimarySolutionPath()); print(\"buildtools=\", g.GetBuildtoolsPath()); print(\"bin=\", g.GetBuildtoolsPlatformBinaryPath())" 2>&1)
-              echo "== git toplevel from $d:"; (cd "$d" && git rev-parse --show-toplevel 2>&1)
-            done
-            echo "== gn --version from /workspace, NO override (run 3 conditions), traced:"
-            (cd /workspace && env -u CHROMIUM_BUILDTOOLS_PATH timeout 10 bash -x /opt/depot-tools/gn --version 2>&1 | head -60)
-            pkill -9 -f /opt/depot-tools/ 2>/dev/null; sleep 1
-            echo "== gn --version from /workspace, WITH CHROMIUM_BUILDTOOLS_PATH:"
-            (cd /workspace && CHROMIUM_BUILDTOOLS_PATH=$SRC/buildtools timeout 20 gn --version 2>&1 | head -20)
-            echo "== gn --version from $SRC, NO override:"
-            (cd "$SRC" && env -u CHROMIUM_BUILDTOOLS_PATH timeout 20 gn --version 2>&1 | head -20)
-          '
-          sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/viewer"
-          exit 0
-
       - name: Verify generated SetPositions export
         shell: bash
         working-directory: viewer/packages/pdfium
@@ -286,8 +248,16 @@ jobs:
         run: |
           set -euxo pipefail
 
-          npm install --ignore-scripts --no-audit --no-fund
-          npm run build
+          # Install exactly as the EmbedPDF v2 monorepo does: pnpm 10.4.0
+          # (its packageManager) with the committed pnpm-lock.yaml. That
+          # lockfile pins rollup 4.57.1, typescript 5.9.3 and tslib 2.8.1,
+          # an optional peer of @rollup/plugin-typescript that pnpm installs
+          # and plain `npm install` does not. With the stock vendor files this
+          # reproduces the published @embedpdf/pdfium 2.15.1 dist byte for byte.
+          # .npmrc references ${NPM_TOKEN}; the public registry needs none.
+          NPM_TOKEN= npx -y pnpm@10.4.0 install --frozen-lockfile \
+            --ignore-scripts --filter @embedpdf/pdfium
+          NPM_TOKEN= npx -y pnpm@10.4.0 run build
 
       - name: Verify NoblePDF deploy files
         shell: bash
