@@ -67,7 +67,7 @@ jobs:
           # Only these files may differ from the EmbedPDF 2.15.1 PDFium base.
           # noblepdf/phase8/ is the Node regression suite; it is not compiled
           # into PDFium.
-          ALLOWED='^(public/fpdf_edit\.h|fpdfsdk/fpdf_edittext\.cpp|\.github/workflows/noblepdf-patched-pdfium\.yml|noblepdf/phase8/.*)$'
+          ALLOWED='^(public/fpdf_edit\.h|fpdfsdk/fpdf_edittext\.cpp|\.github/workflows/noblepdf-patched-pdfium\.yml|\.github/workflows/noblepdf-phase8-claude-fix\.yml|noblepdf/phase8/.*)$'
           git diff --name-only "$PDFIUM_BASE" HEAD | tee /tmp/changed-files.txt
           if grep -Ev "$ALLOWED" /tmp/changed-files.txt; then
             echo "::error::Files outside the SetPositions backport changed"
