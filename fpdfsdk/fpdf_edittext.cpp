@@ -668,6 +668,77 @@ FPDFText_SetCharcodes(FPDF_PAGEOBJECT text_object,
   return true;
 }
 
+FPDF_EXPORT FPDF_BOOL FPDF_CALLCONV
+FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
+                      const float* positions,
+                      size_t count) {
+  CPDF_TextObject* obj = CPDFTextObjectFromFPDFPageObject(text_object);
+  if (!obj || (!positions && count)) {
+    return false;
+  }
+
+  RetainPtr<CPDF_Font> font = obj->GetFont();
+  if (!font || font->IsVertWriting()) {
+    return false;
+  }
+
+  const CPDF_CIDFont* cid_font = font->AsCIDFont();
+
+  std::vector<uint32_t> codes;
+  for (uint32_t code : obj->GetCharCodes()) {
+    if (code != CPDF_Font::kInvalidCharCode) {
+      codes.push_back(code);
+    }
+  }
+
+  const float font_size = obj->GetFontSize();
+  if (codes.size() <= 1 || count != codes.size() - 1 || font_size == 0) {
+    return false;
+  }
+
+  // SAFETY: required from caller.
+  auto next_positions = UNSAFE_BUFFERS(pdfium::span(positions, count));
+
+  const float char_space = obj->GetCharSpace();
+  const float word_space = obj->GetWordSpace();
+
+  std::vector<ByteString> segments(1);
+  std::vector<float> kernings;
+
+  float current = 0;
+  for (size_t i = 0; i < codes.size(); ++i) {
+    font->AppendChar(&segments.back(), codes[i]);
+
+    if (i + 1 == codes.size()) {
+      break;
+    }
+
+    current += font->GetCharWidthF(codes[i]) * font_size / 1000;
+
+    if (codes[i] == ' ' &&
+        (!cid_font || cid_font->GetCharSize(' ') == 1)) {
+      current += word_space;
+    }
+
+    current += char_space;
+
+    const float kerning =
+        (current - next_positions[i]) * 1000 / font_size;
+
+    if (kerning != 0) {
+      kernings.push_back(kerning);
+      segments.emplace_back();
+    }
+
+    current = next_positions[i];
+  }
+
+  obj->SetSegments(pdfium::span(segments), pdfium::span(kernings));
+  obj->CalcPositionData(1.0f);
+  obj->SetDirty(true);
+
+  return true;
+}
 FPDF_EXPORT FPDF_FONT FPDF_CALLCONV FPDFText_LoadFont(FPDF_DOCUMENT document,
                                                       const uint8_t* data,
                                                       uint32_t size,

@@ -1361,6 +1361,28 @@ FPDFText_SetCharcodes(FPDF_PAGEOBJECT text_object,
                       const uint32_t* charcodes,
                       size_t count);
 
+// Experimental API.
+// Set the character positions for a text object.
+//
+// text_object - handle to the text object.
+// positions   - pointer to an array of character positions to be set.
+// count       - number of elements in |positions|.
+//
+// The |positions| array specifies the position in points for each character
+// except the first one. The first character has an implied position value of 0.
+// All positions are relative to the origin of the text object.
+//
+// NoblePDF V1 support is horizontal text only.
+//
+// For a text object with N characters, |count| must be N - 1.
+// This API therefore fails when N <= 1.
+//
+// Returns TRUE on success.
+FPDF_EXPORT FPDF_BOOL FPDF_CALLCONV
+FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
+                      const float* positions,
+                      size_t count);
+
 // Returns a font object loaded from a stream of data. The font is loaded
 // into the document. Various font data structures, such as the ToUnicode data,
 // are auto-generated based on the inputs.
