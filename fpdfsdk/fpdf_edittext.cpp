@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <map>
 #include <memory>
@@ -692,7 +693,8 @@ FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
   }
 
   const float font_size = obj->GetFontSize();
-  if (codes.size() <= 1 || count != codes.size() - 1 || font_size == 0) {
+  if (codes.size() <= 1 || count != codes.size() - 1 || font_size == 0 ||
+      !std::isfinite(font_size)) {
     return false;
   }
 
@@ -707,7 +709,19 @@ FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
 
   float current = 0;
   for (size_t i = 0; i < codes.size(); ++i) {
-    font->AppendChar(&segments.back(), codes[i]);
+    // SetSegments() re-decodes the segment bytes with the font's encoding.
+    // Every code must encode to bytes that decode back to exactly that one
+    // code, otherwise the rebuilt glyph run would differ from |codes| and the
+    // positions would be applied to the wrong glyphs.
+    ByteString encoded;
+    font->AppendChar(&encoded, codes[i]);
+    size_t decoded_length = 0;
+    if (font->GetNextChar(encoded.AsStringView(), &decoded_length) !=
+            codes[i] ||
+        decoded_length != encoded.GetLength()) {
+      return false;
+    }
+    segments.back() += encoded;
 
     if (i + 1 == codes.size()) {
       break;
@@ -722,8 +736,19 @@ FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
 
     current += char_space;
 
+    if (!std::isfinite(next_positions[i])) {
+      return false;
+    }
+
     const float kerning =
         (current - next_positions[i]) * 1000 / font_size;
+
+    // A non-finite adjustment would poison CalcPositionData() and be written
+    // out by SkFloatToDecimal() as 0 (NaN) or +/-FLT_MAX (Inf), so the saved
+    // file would not match the in-memory object. Fail before mutating.
+    if (!std::isfinite(kerning)) {
+      return false;
+    }
 
     if (kerning != 0) {
       kernings.push_back(kerning);
@@ -739,6 +764,7 @@ FPDFText_SetPositions(FPDF_PAGEOBJECT text_object,
 
   return true;
 }
+
 FPDF_EXPORT FPDF_FONT FPDF_CALLCONV FPDFText_LoadFont(FPDF_DOCUMENT document,
                                                       const uint8_t* data,
                                                       uint32_t size,

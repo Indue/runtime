@@ -1368,14 +1368,29 @@ FPDFText_SetCharcodes(FPDF_PAGEOBJECT text_object,
 // positions   - pointer to an array of character positions to be set.
 // count       - number of elements in |positions|.
 //
-// The |positions| array specifies the position in points for each character
-// except the first one. The first character has an implied position value of 0.
-// All positions are relative to the origin of the text object.
+// The |positions| array specifies the position of each character except the
+// first one. The first character has an implied position value of 0. All
+// positions are offsets along the baseline from the origin of the text
+// object, in unscaled text space units (the units of Tc and Tw), before the
+// text object's matrix is applied. That matrix already includes horizontal
+// scaling (Tz), rotation, scaling and the CTM, so the values are points only
+// when the matrix is the identity.
 //
-// NoblePDF V1 support is horizontal text only.
+// Backport note: only horizontal writing is supported. Upstream PDFium also
+// accepts vertical writing; this backport fails for vertical fonts.
 //
-// For a text object with N characters, |count| must be N - 1.
-// This API therefore fails when N <= 1.
+// For a text object with N characters, |count| must be N - 1. N counts the
+// character codes of |text_object| itself (as set by FPDFText_SetText() or
+// FPDFText_SetCharcodes()), not characters of an FPDF_TEXTPAGE. Therefore
+// this API fails when N <= 1.
+//
+// Any existing TJ adjustments of |text_object| are replaced. The positions
+// are stored as TJ adjustments that account for glyph widths, character
+// spacing (Tc) and word spacing (Tw); the character codes are not changed.
+//
+// Fails without modifying |text_object| if the font size is 0, if any
+// position or resulting adjustment is not finite, or if the character codes
+// cannot be re-encoded by the font.
 //
 // Returns TRUE on success.
 FPDF_EXPORT FPDF_BOOL FPDF_CALLCONV

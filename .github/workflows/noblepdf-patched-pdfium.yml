@@ -4,12 +4,21 @@ on:
   push:
     branches:
       - noblepdf-setpositions-exact
+      - noblepdf-setpositions-claude-audit
     paths:
       - ".github/workflows/noblepdf-patched-pdfium.yml"
+      - "fpdfsdk/fpdf_edittext.cpp"
+      - "public/fpdf_edit.h"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  # PDFium revision used by @embedpdf/pdfium 2.15.1. Must stay pinned.
+  PDFIUM_BASE: 73a041a5c1aaffa09ebb64f1981ff501cb91a41c
+  # embedpdf/embed-pdf-viewer v2 commit that published @embedpdf/pdfium 2.15.1.
+  EMBEDPDF_WRAPPER: dfb2df818065c704a0241beb0791e2fd0d55a10e
 
 jobs:
   build-patched-pdfium:
@@ -18,21 +27,59 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - name: Checkout exact NoblePDF patched runtime
+      - name: Free runner disk space
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Checkout NoblePDF patched runtime
         uses: actions/checkout@v4
         with:
-          ref: a91449d77ceb56fe000e198d1b8a75f68f0a4795
+          ref: ${{ github.sha }}
           path: runtime-src
-          fetch-depth: 1
+          fetch-depth: 0
+
+      - name: Verify patch is a surgical change on the pinned base
+        shell: bash
+        working-directory: runtime-src
+        run: |
+          set -euxo pipefail
+
+          git merge-base --is-ancestor "$PDFIUM_BASE" HEAD
+
+          # Only these files may differ from the EmbedPDF 2.15.1 PDFium base.
+          ALLOWED='^(public/fpdf_edit\.h|fpdfsdk/fpdf_edittext\.cpp|\.github/workflows/noblepdf-patched-pdfium\.yml)$'
+          git diff --name-only "$PDFIUM_BASE" HEAD | tee /tmp/changed-files.txt
+          if grep -Ev "$ALLOWED" /tmp/changed-files.txt; then
+            echo "::error::Files outside the SetPositions backport changed"
+            exit 1
+          fi
 
       - name: Checkout exact EmbedPDF v2 wrapper
         uses: actions/checkout@v4
         with:
           repository: embedpdf/embed-pdf-viewer
-          ref: dfb2df818065c704a0241beb0791e2fd0d55a10e
+          ref: ${{ env.EMBEDPDF_WRAPPER }}
           path: viewer
           submodules: false
           fetch-depth: 1
+
+      - name: Verify PDFium wrapper version and submodule pin
+        shell: bash
+        working-directory: viewer/packages/pdfium
+        run: |
+          set -euxo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "EmbedPDF PDFium package version: $VERSION"
+          test "$VERSION" = "2.15.1"
+
+          PINNED="$(git -C "$GITHUB_WORKSPACE/viewer" ls-tree HEAD \
+            packages/pdfium/pdfium-src | awk '{print $3}')"
+          test "$PINNED" = "$PDFIUM_BASE"
 
       - name: Install NoblePDF patched source
         shell: bash
@@ -46,33 +93,17 @@ jobs:
           # Clone instead of copying so .git is self-contained inside the
           # directory mounted into Docker.
           git clone --no-local "$GITHUB_WORKSPACE/runtime-src" "$TARGET"
+          git -C "$TARGET" checkout --detach "$GITHUB_SHA"
 
-          git -C "$TARGET" checkout --detach \
-            a91449d77ceb56fe000e198d1b8a75f68f0a4795
+          test "$(git -C "$TARGET" rev-parse HEAD)" = "$GITHUB_SHA"
 
-          test -d "$TARGET/.git"
+          grep -n "FPDFText_SetPositions" "$TARGET/public/fpdf_edit.h"
+          grep -n "FPDFText_SetPositions" "$TARGET/fpdfsdk/fpdf_edittext.cpp"
 
-          test "$(git -C "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src" rev-parse HEAD)" = \
-            "a91449d77ceb56fe000e198d1b8a75f68f0a4795"
-
-          grep -n "FPDFText_SetPositions" \
-            "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src/public/fpdf_edit.h"
-
-          grep -n "FPDFText_SetPositions" \
-            "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src/fpdfsdk/fpdf_edittext.cpp"
-
-      - name: Verify PDFium wrapper version
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          cd "$GITHUB_WORKSPACE/viewer/packages/pdfium"
-
-          VERSION="$(node -p "require('./package.json').version")"
-
-          echo "EmbedPDF PDFium package version: $VERSION"
-
-          test "$VERSION" = "2.15.1"
+          # The build container runs as root. git refuses repositories owned
+          # by another user ("dubious ownership"), which made gclient fail
+          # with "--local can only be used inside a git repository".
+          sudo chown -R 0:0 "$TARGET"
 
       - name: Build patched PDFium WASM
         shell: bash
@@ -81,22 +112,173 @@ jobs:
           set -euxo pipefail
 
           docker compose build pdfium-build
-          docker compose run --rm pdfium-build
+
+          # EmbedPDF's CI entrypoint (scripts/build.sh) cannot generate a
+          # fresh build: it runs `gn gen "$OUT" --root "$SRC"` with cwd
+          # /workspace. From there depot_tools' gn wrapper cannot find the
+          # checkout's DEPS-pinned buildtools/linux64/gn and falls back to
+          # the `gn` on PATH (itself), recursing until killed (run 3). Even
+          # when GN is found, `--root SRC` without '=' makes SRC a second
+          # build dir ("Need exactly one build directory", run 4).
+          # The maintainers build with scripts/dev.sh, which runs gn gen from
+          # $SRC ("running from elsewhere with --root causes issues"). Use
+          # dev.sh's sync + gn gen verbatim, then build.sh's one-shot build,
+          # export and copy steps verbatim. EmbedPDF's files are not modified.
+          cat > scripts/noblepdf-build.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          set -x
+
+          ROOT=/workspace
+          SRC=$ROOT/packages/pdfium/pdfium-src
+          OUT=$SRC/out/wasm
+          PDFIUM=$ROOT/packages/pdfium
+          export ROOT SRC OUT PDFIUM
+          mkdir -p $OUT
+          export PATH="$HOME/.cargo/bin:$PATH"
+
+          # --- dev.sh step 0 (verbatim) ---------------------------------------
+          if [[ ! -d "$SRC/third_party/llvm-build" ]]; then
+            cat > "$ROOT/.gclient" <<'GCLIENT'
+          solutions = [
+            { "name": "packages/pdfium/pdfium-src",
+              "url":  "https://pdfium.googlesource.com/pdfium.git",
+              "deps_file": "DEPS",
+              "managed": False,
+              "custom_deps": {},
+            },
+          ]
+          GCLIENT
+            ( cd "$ROOT/packages/pdfium/pdfium-src" && \
+              gclient sync --no-history --shallow --nohooks --deps=builder )
+            rm "$ROOT/.gclient"
+          fi
+
+          # --- dev.sh step 0.5 (verbatim) -------------------------------------
+          cp -f "$PDFIUM/build/patch/build/config/BUILDCONFIG.gn" \
+                "$SRC/build/config/BUILDCONFIG.gn"
+          cp -f "$PDFIUM/build/patch/build/toolchain/wasm/BUILD.gn" \
+                "$SRC/build/toolchain/wasm/BUILD.gn"
+
+          # --- dev.sh step 1 (verbatim): gn gen from the source directory ----
+          (
+            cd "$SRC" && \
+            gn gen out/wasm \
+              --args='is_debug=false treat_warnings_as_errors=false pdf_use_skia=false pdf_enable_xfa=false pdf_enable_v8=false is_component_build=false clang_use_chrome_plugins=false pdf_is_standalone=true use_debug_fission=false use_custom_libcxx=false use_sysroot=false pdf_is_complete_lib=true pdf_use_partition_alloc=false is_clang=false symbol_level=0 target_os="wasm" target_cpu="wasm"'
+          )
+
+          # --- build.sh one-shot build (verbatim) -----------------------------
+          gen_exports() {
+            local WS=$ROOT/packages/pdfium/build/wasm
+            rm -rf "$WS" && mkdir -p "$WS"
+            ( cd "$SRC" &&
+              find public -path public/cpp -prune -o -name '*.h' -print |
+              sort | sed 's|^|#include "|;s|$|"|' ) > "$WS/all.h"
+            echo '#include "../build/code/cpp/ext_api.h"' >> "$WS/all.h"
+            clang -std=c11 -I"$SRC" -I"$ROOT/build/code/cpp" \
+                  -fsyntax-only -Xclang -ast-dump=json "$WS/all.h" > "$WS/ast.json"
+            node "$PDFIUM/build/generate-functions.mjs"       "$WS/ast.json" "$WS"
+            node "$PDFIUM/build/generate-runtime-methods.mjs" "$WS"
+          }
+
+          cd "$SRC"
+          ninja -C "$OUT" pdfium -v
+          gen_exports
+
+          cd "$PDFIUM/build"
+          bash ./compile.esm.sh
+          bash ./compile.sh
+
+          cp -f ./wasm/{runtime-methods.ts,functions.ts,pdfium.wasm,pdfium.js,pdfium.cjs} "$PDFIUM/src/vendor/"
+          EOF
+          chmod +x scripts/noblepdf-build.sh
+          bash -n scripts/noblepdf-build.sh
+
+          docker compose run --rm --entrypoint /usr/bin/tini pdfium-build \
+            -- /workspace/packages/pdfium/scripts/noblepdf-build.sh
+
+          # Hand the tree back to the runner user for the host-side steps.
+          sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/viewer"
+
+      - name: Diagnose GN resolution inside the build container
+        if: always()
+        shell: bash
+        working-directory: viewer/packages/pdfium
+        run: |
+          set -uo pipefail
+          docker image inspect embedpdf/pdfium-dev >/dev/null 2>&1 || exit 0
+          sudo chown -R 0:0 "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src"
+          docker compose run --rm --entrypoint /bin/bash pdfium-build -c '
+            set -u
+            SRC=/workspace/packages/pdfium/pdfium-src
+            echo "== pwd: $(pwd)  SHLVL=$SHLVL"
+            echo "== PATH:"; echo "$PATH" | tr ":" "\n" | nl
+            echo "== type -a:"; for t in gn python3 vpython3 ninja gclient git; do type -a "$t" 2>&1; done
+            echo "== depot_tools commit:"; git -C /opt/depot-tools log -1 --format="%H %cd" 2>&1
+            echo "== /opt/depot-tools/gn:"; cat /opt/depot-tools/gn
+            echo "== /opt/depot-tools/gn.py:"; cat /opt/depot-tools/gn.py
+            echo "== gclient_paths.py (lookup functions):"
+            grep -n "def GetPrimarySolutionPath\|def GetBuildtoolsPath\|def GetBuildtoolsPlatformBinaryPath\|def FindGclientRoot\|def GetGClientPrimarySolutionName" -A30 /opt/depot-tools/gclient_paths.py
+            echo "== fetched GN:"; ls -la "$SRC/buildtools" "$SRC/buildtools/linux64" 2>&1
+            "$SRC/buildtools/linux64/gn" --version 2>&1
+            echo "== DEPS gn_version:"; grep -n "gn_version" "$SRC/DEPS"
+            for d in /workspace "$SRC"; do
+              echo "== gclient_paths from $d (no override):"
+              (cd "$d" && env -u CHROMIUM_BUILDTOOLS_PATH python3 -c "import sys; sys.path.insert(0, \"/opt/depot-tools\"); import gclient_paths as g; print(\"primary=\", g.GetPrimarySolutionPath()); print(\"buildtools=\", g.GetBuildtoolsPath()); print(\"bin=\", g.GetBuildtoolsPlatformBinaryPath())" 2>&1)
+              echo "== git toplevel from $d:"; (cd "$d" && git rev-parse --show-toplevel 2>&1)
+            done
+            echo "== gn --version from /workspace, NO override (run 3 conditions), traced:"
+            (cd /workspace && env -u CHROMIUM_BUILDTOOLS_PATH timeout 10 bash -x /opt/depot-tools/gn --version 2>&1 | head -60)
+            pkill -9 -f /opt/depot-tools/ 2>/dev/null; sleep 1
+            echo "== gn --version from /workspace, WITH CHROMIUM_BUILDTOOLS_PATH:"
+            (cd /workspace && CHROMIUM_BUILDTOOLS_PATH=$SRC/buildtools timeout 20 gn --version 2>&1 | head -20)
+            echo "== gn --version from $SRC, NO override:"
+            (cd "$SRC" && env -u CHROMIUM_BUILDTOOLS_PATH timeout 20 gn --version 2>&1 | head -20)
+          '
+          sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/viewer"
+          exit 0
 
       - name: Verify generated SetPositions export
         shell: bash
+        working-directory: viewer/packages/pdfium
         run: |
           set -euxo pipefail
 
-          VENDOR="$GITHUB_WORKSPACE/viewer/packages/pdfium/src/vendor"
+          VENDOR="src/vendor"
 
           test -f "$VENDOR/pdfium.wasm"
           test -f "$VENDOR/pdfium.js"
           test -f "$VENDOR/functions.ts"
-
-          grep -n "FPDFText_SetPositions" "$VENDOR/functions.ts"
-
           ls -lh "$VENDOR/pdfium.wasm"
+
+          # functions.ts must equal stock 2.15.1 plus exactly one entry.
+          git -C "$GITHUB_WORKSPACE/viewer" show \
+            HEAD:packages/pdfium/src/vendor/functions.ts > /tmp/stock-functions.ts
+          diff /tmp/stock-functions.ts "$VENDOR/functions.ts" \
+            > /tmp/functions.diff || true
+          cat /tmp/functions.diff
+          test "$(grep -c '^[<>]' /tmp/functions.diff)" = "1"
+          EXPECTED="  FPDFText_SetPositions: [[\"number\",\"number\",\"number\"] as const, 'boolean'] as const,"
+          grep -qxF "> $EXPECTED" /tmp/functions.diff
+
+          # The wasm must export exactly the stock 2.15.1 set plus
+          # FPDFText_SetPositions.
+          git -C "$GITHUB_WORKSPACE/viewer" show \
+            HEAD:packages/pdfium/src/vendor/pdfium.wasm > /tmp/stock-pdfium.wasm
+          node -e '
+            const fs = require("fs");
+            const names = (p) => new Set(WebAssembly.Module.exports(
+              new WebAssembly.Module(fs.readFileSync(p))).map((e) => e.name));
+            const stock = names("/tmp/stock-pdfium.wasm");
+            const patched = names(process.argv[1]);
+            const added = [...patched].filter((n) => !stock.has(n));
+            const removed = [...stock].filter((n) => !patched.has(n));
+            console.log("added exports:", added, "removed exports:", removed);
+            if (removed.length || added.length !== 1 ||
+                added[0] !== "FPDFText_SetPositions") {
+              process.exit(1);
+            }
+          ' "$VENDOR/pdfium.wasm"
 
       - name: Build @embedpdf/pdfium distribution
         shell: bash
@@ -113,25 +295,37 @@ jobs:
           set -euxo pipefail
 
           DIST="$GITHUB_WORKSPACE/viewer/packages/pdfium/dist"
+          VENDOR="$GITHUB_WORKSPACE/viewer/packages/pdfium/src/vendor"
 
           test -f "$DIST/index.js"
           test -f "$DIST/index.browser.js"
+          test -f "$DIST/index.cjs"
           test -f "$DIST/pdfium.wasm"
 
           grep -q "FPDFText_SetPositions" "$DIST/index.js"
+          grep -q "FPDFText_SetPositions" "$DIST/index.browser.js"
+          grep -q "FPDFText_SetPositions" "$DIST/index.cjs"
+
+          # The JS glue and the wasm must come from the same build.
+          test "$(sha256sum < "$DIST/pdfium.wasm")" = \
+            "$(sha256sum < "$VENDOR/pdfium.wasm")"
 
           echo ""
           echo "=== NoblePDF patched PDFium build ==="
-          ls -lh "$DIST/index.js"
-          ls -lh "$DIST/index.browser.js"
-          ls -lh "$DIST/pdfium.wasm"
-          sha256sum "$DIST/index.js"
-          sha256sum "$DIST/pdfium.wasm"
+          echo "runtime commit: $GITHUB_SHA"
+          ls -lh "$DIST/index.js" "$DIST/index.browser.js" "$DIST/pdfium.wasm"
+          sha256sum "$DIST/index.js" "$DIST/index.browser.js" "$DIST/pdfium.wasm"
+          echo ""
+          echo "NOTE: DEFAULT_PDFIUM_WASM_URL in this bundle still points at the"
+          echo "stock @embedpdf/pdfium@2.15.1 wasm on jsDelivr. Always pass the"
+          echo "patched pdfium.wasm explicitly (wasmBinary/locateFile)."
+          grep -o "https://cdn.jsdelivr.net/npm/@embedpdf/pdfium@[^'\"]*" \
+            "$DIST/index.browser.js" | head -1
 
       - name: Upload patched PDFium 2.15.1
         uses: actions/upload-artifact@v4
         with:
-          name: noblepdf-pdfium-2.15.1-setpositions
+          name: noblepdf-pdfium-2.15.1-setpositions-${{ github.sha }}
           path: viewer/packages/pdfium/dist/
           if-no-files-found: error
           retention-days: 14
