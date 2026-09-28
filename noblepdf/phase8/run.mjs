@@ -17,6 +17,7 @@ import {
   FPDF_PAGEOBJ_IMAGE,
 } from './lib/engine.mjs';
 import { buildPdf, specShow, cidWidths, hasFractionalWidths } from './lib/fixtures.mjs';
+import { layoutReplacement, semanticGapLint, advance } from './lib/layout.mjs';
 import * as pdfjsLane from './lib/pdfjs.mjs';
 import { diff } from './lib/image.mjs';
 import { showSequences, containsSequence } from './lib/content.mjs';
@@ -72,7 +73,7 @@ const FIXTURES = [
       { id: 'target', font: 'F1', size: 18, tm: [1, 0, 0, 1, 72, 650], show: ['W', 120, 'A', -80, 'V', 200, 'E', -40, 'S', 60, 'KERN'] },
       context('F1', 620),
     ],
-    edit: { target: 'target', old: 'WAVESKERN', neu: 'TOKYOLAKE', layout: 'preserve' },
+    edit: { target: 'target', old: 'WAVESKERN', neu: 'TOKYOLAKE', layout: 'anchored' },
   },
   {
     id: 'C',
@@ -82,7 +83,7 @@ const FIXTURES = [
       { id: 'target', font: 'F1', size: 12, tz: 90, tc: 0.8, tw: 4, tm: [1.6, 0, 0, 0.9, 72, 560], show: ['Scaled words here'] },
       context('F1', 530),
     ],
-    edit: { target: 'target', old: 'Scaled words here', neu: 'Resized items too', layout: 'preserve' },
+    edit: { target: 'target', old: 'Scaled words here', neu: 'Resized items too', layout: 'anchored' },
   },
   {
     id: 'D',
@@ -92,7 +93,7 @@ const FIXTURES = [
       { id: 'target', font: 'F1', size: 16, tc: 0.2, tm: rot(30, 220, 380), show: ['Rotated', -150, 'TJ', 80, 'line'] },
       context('F1', 330),
     ],
-    edit: { target: 'target', old: 'RotatedTJline', neu: 'Spinning text', layout: 'preserve' },
+    edit: { target: 'target', old: 'RotatedTJline', neu: 'Spinning text', layout: 'anchored' },
   },
   {
     id: 'E',
@@ -102,7 +103,7 @@ const FIXTURES = [
       { id: 'target', font: 'F1', size: 16, tc: 0.3, tm: [1, 0, 0, 1, 72, 470], show: ['True', -60, 'Type', 90, ' subset'] },
       context('F1', 440),
     ],
-    edit: { target: 'target', old: 'TrueType subset', neu: 'Liberation font', layout: 'preserve' },
+    edit: { target: 'target', old: 'TrueType subset', neu: 'Liberation font', layout: 'anchored' },
   },
   {
     id: 'F',
@@ -112,7 +113,7 @@ const FIXTURES = [
       { id: 'target', font: 'F1', size: 14, tm: [1, 0, 0, 1, 72, 430], show: ['Standard Helvetica'] },
       context('F1', 400),
     ],
-    edit: { target: 'target', old: 'Standard Helvetica', neu: 'Replaced Helvetica', layout: 'preserve' },
+    edit: { target: 'target', old: 'Standard Helvetica', neu: 'Replaced Helvetica', layout: 'anchored' },
     // PDFium substitutes its own Helvetica metrics; spec viewers use the AFM.
     pdfjsGeometryAdvisory: true,
   },
@@ -124,7 +125,7 @@ const FIXTURES = [
       { id: 'target', font: 'F1', size: 13, tw: 5, tc: 0.2, tm: [1, 0, 0, 1, 72, 390], show: ['Words with real spaces'] },
       context('F1', 360),
     ],
-    edit: { target: 'target', old: 'Words with real spaces', neu: 'Texts have more gaps!!', layout: 'preserve' },
+    edit: { target: 'target', old: 'Words with real spaces', neu: 'Texts have more gaps!!', layout: 'anchored' },
   },
   {
     id: 'H',
@@ -136,7 +137,7 @@ const FIXTURES = [
       context('F1', 310),
       { id: 'pool', font: 'F1', size: 8, tm: [1, 0, 0, 1, 72, 60], show: ['glyph pool: Identity font!'] },
     ],
-    edit: { target: 'target', old: 'UnicodeCID run', neu: 'Identity font!', layout: 'preserve' },
+    edit: { target: 'target', old: 'UnicodeCID run', neu: 'Identity font!', layout: 'anchored' },
   },
   {
     id: 'I',
@@ -146,7 +147,7 @@ const FIXTURES = [
       { id: 'target', font: 'F1', size: 12, tc: 0.1, tm: [1, 0, 0, 1, 72, 280], show: ['Invoice ', -50, '2024'] },
       context('F1', 250),
     ],
-    edit: { target: 'target', old: 'Invoice 2024', neu: 'Invoice 2025', layout: 'preserve' },
+    edit: { target: 'target', old: 'Invoice 2024', neu: 'Invoice 2025', layout: 'anchored' },
   },
   {
     id: 'J1',
@@ -156,17 +157,30 @@ const FIXTURES = [
       { id: 'target', font: 'F1', size: 14, tc: 0.5, tw: 1, tm: [1, 0, 0, 1, 72, 220], show: ['Short', -100, 'er'] },
       context('F1', 190),
     ],
-    edit: { target: 'target', old: 'Shorter', neu: 'A considerably longer run', layout: 'natural' },
+    edit: { target: 'target', old: 'Shorter', neu: 'A considerably longer run', layout: 'anchored' },
   },
   {
     id: 'J2',
-    title: 'Different length: longer → shorter (justified to original width)',
+    title: 'Different length: longer → shorter (width kept via real spaces only)',
     fonts: { F1: 'helv' },
     runs: [
       { id: 'target', font: 'F1', size: 14, tc: 0.2, tw: 2, tm: [1, 0, 0, 1, 72, 160], show: ['This sentence gets ', -120, 'shortened'] },
       context('F1', 130),
     ],
-    edit: { target: 'target', old: 'This sentence gets shortened', neu: 'Brief text', layout: 'justify' },
+    edit: { target: 'target', old: 'This sentence gets shortened', neu: 'Brief text', layout: 'anchored-fit' },
+  },
+  {
+    id: 'P',
+    title: 'GUARD: per-glyph origin preservation with different glyph widths',
+    guard: true,
+    fonts: { F1: 'helv' },
+    runs: [
+      { id: 'target', font: 'F1', size: 18, tm: [1, 0, 0, 1, 72, 650], show: ['W', 120, 'A', -80, 'V', 200, 'E', -40, 'S', 60, 'KERN'] },
+      context('F1', 620),
+    ],
+    // The run-9 strategy: new glyph i at old glyph i's origin. Visually exact
+    // but reads as "T OKYOLAKE"; the semantic gap lint must reject it.
+    edit: { target: 'target', old: 'WAVESKERN', neu: 'TOKYOLAKE', layout: 'preserve-origins' },
   },
   {
     id: 'K1',
@@ -177,7 +191,7 @@ const FIXTURES = [
       { id: 'target', font: 'F1', size: 16, tm: [1, 0, 0, 1, 72, 520], show: ['Fractional', -40, ' widths'] },
       context('F1', 500),
     ],
-    edit: { target: 'target', old: 'Fractional widths', neu: 'Truncated metrics', layout: 'preserve' },
+    edit: { target: 'target', old: 'Fractional widths', neu: 'Truncated metrics', layout: 'anchored' },
   },
   {
     id: 'K2',
@@ -189,7 +203,7 @@ const FIXTURES = [
       context('F1', 500),
       { id: 'pool', font: 'F1', size: 8, tm: [1, 0, 0, 1, 72, 60], show: ['glyph pool: Identity font!'] },
     ],
-    edit: { target: 'target', old: 'UnicodeCID run', neu: 'Identity font!', layout: 'preserve' },
+    edit: { target: 'target', old: 'UnicodeCID run', neu: 'Identity font!', layout: 'anchored' },
   },
 ];
 
@@ -252,19 +266,45 @@ const unionRect = (...rs) => ({
 });
 const norm = (s) => s.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
 
-function targetPositions(fx, widthOf, run, originalXs, newCodes) {
-  const n = newCodes.length;
-  const adv = (c) => (widthOf(c) * run.size) / 1000 + (run.tc ?? 0) + (c === 32 && run.fontIsSimple ? run.tw ?? 0 : 0);
-  if (fx.edit.layout === 'preserve') return originalXs.slice(0, n);
-  const xs = [0];
-  for (let i = 0; i + 1 < n; i++) xs.push(xs[i] + adv(newCodes[i]));
-  if (fx.edit.layout === 'justify') {
-    // Spread the new glyphs so the last glyph starts where the old last did.
-    const target = originalXs[originalXs.length - 1];
-    const extra = (target - xs[n - 1]) / (n - 1);
-    return xs.map((x, i) => x + extra * i);
+// Requested object-space positions for the replacement text.
+function targetLayout(fx, widthOf, run, oldXs, oldCodes, newCodes) {
+  if (fx.edit.layout === 'preserve-origins') {
+    // Run-9 strategy, kept only for the guard fixture.
+    return { xs: oldXs.slice(0, newCodes.length), prefix: 0, suffix: 0, fit: null };
   }
-  return xs;
+  return layoutReplacement({
+    oldCodes,
+    oldXs,
+    newCodes,
+    newText: fx.edit.neu,
+    run,
+    widthOf,
+    fit: fx.edit.layout === 'anchored-fit',
+  });
+}
+
+// Text page page-object index of a text object (stable across save/reopen:
+// the object census is checked to be unchanged).
+function objectIndex(engine, pg, obj) {
+  return engine.pageObjects(pg.page).findIndex((o) => o.obj === obj);
+}
+function objectAt(engine, pg, index) {
+  const o = engine.pageObjects(pg.page)[index];
+  return o && o.type === FPDF_PAGEOBJ_TEXT ? o.obj : 0;
+}
+function glyphsOf(engine, pg, obj) {
+  return engine.glyphs(pg.tp).filter((g) => g.obj === obj);
+}
+// Max distance between expected and actual origins of the non-space glyphs.
+// Space glyphs are excluded because PDFium may merge a real space with an
+// adjacent generated one; the strict object-text check covers them.
+function nonSpaceDrift(glyphs, expectedPage, text) {
+  const act = glyphs.filter((g) => g.unicode !== 32);
+  const exp = expectedPage.filter((_, i) => text[i] !== ' ');
+  if (act.length !== exp.length) return { drift: Infinity, detail: `${act.length} glyphs vs ${exp.length} expected` };
+  let drift = 0;
+  act.forEach((g, i) => (drift = Math.max(drift, Math.hypot(g.x - exp[i].x, g.y - exp[i].y))));
+  return { drift, detail: `${drift.toExponential(3)} pt over ${act.length} glyphs` };
 }
 
 // ---------------------------------------------------------------------------
@@ -287,12 +327,15 @@ async function runFixture(engine, fx) {
   const pageHeight = engine.m.FPDF_GetPageHeightF(before.page);
 
   let target = null;
+  let targetIndex = -1;
   let M = null;
   let expectedPage = null;
   let newCodes = null;
   let oldCodes = null;
   let refBytes = null;
   let edited;
+  let layout = null;
+  let run = null;
 
   if (fx.regenerateOnly) {
     // Dirty one unrelated object (same render mode) so EmbedPDF regenerates
@@ -304,47 +347,55 @@ async function runFixture(engine, fx) {
     edited = engine.saveNonIncremental(before.d);
     before.close();
   } else {
-    const run = { ...fx.runs.find((r) => r.id === fx.edit.target), fontIsSimple: !isCid };
+    run = { ...fx.runs.find((r) => r.id === fx.edit.target), fontIsSimple: !isCid };
     target = findTarget(engine, before, fx.edit.old);
     add('target object uniquely located', !!target, target ? `${target.glyphs.length} glyphs` : 'not found');
     if (!target) {
       before.close();
       return { checks };
     }
+    targetIndex = objectIndex(engine, before, target.obj);
     M = engine.matrix(target.obj);
     const conv = pageToObjectPositions(M, target.glyphs);
     add('page→object geometry gate', conv.ok, conv.ok ? `baseline residual ${conv.worstY.toExponential(2)}, fwd ${conv.worstFwd.toExponential(2)}pt` : conv.reason);
     oldCodes = font.encode(fx.edit.old);
     newCodes = font.encode(fx.edit.neu);
-    // P8_DEV_NATURAL=1 (local development on a stock engine only): skip
-    // SetPositions and expect SetCharcodes' natural layout, to exercise the
-    // rest of the pipeline. Never set in CI.
-    const devNatural = process.env.P8_DEV_NATURAL === '1' && !engine.hasSetPositions;
-    const xs = targetPositions(devNatural ? { edit: { layout: 'natural' } } : fx, widthOf, run, conv.xs, newCodes);
+    layout = targetLayout(fx, widthOf, run, conv.xs, oldCodes, newCodes);
+    const xs = layout.xs;
     expectedPage = xs.map((x) => apply(M, x, 0));
+
+    const lint = semanticGapLint({ xs, newCodes, newText: fx.edit.neu, run, widthOf });
+    const lintDetail = `worst intra-word gap ${lint.worst ? lint.worst.em : 0} em${lint.bad.length ? `; offending: ${JSON.stringify(lint.bad.slice(0, 4))}` : ''}; prefix ${layout.prefix}, suffix ${layout.suffix}${layout.fit ? `, fit ${JSON.stringify(layout.fit)}` : ''}`;
+    if (fx.guard) add('semantic gap lint rejects this layout', !lint.ok, lintDetail);
+    else add('semantic gap lint (requested layout)', lint.ok, lintDetail);
 
     const frac = hasFractionalWidths(widthOf, [...new Set([...oldCodes, ...newCodes])]);
     add('fractional-width gate', fx.risk ? frac : !frac, frac ? 'fractional widths → True Edit must BLOCK' : 'integer widths');
-
-    if (!engine.hasSetPositions && !devNatural) {
-      add('FPDFText_SetPositions exported', false, 'engine lacks SetPositions');
-      before.close();
-      return { checks };
-    }
-
-    // Negative API checks (must fail and leave the object untouched) are run
-    // on the dedicated R fixture; here: the real edit.
-    add('SetCharcodes', engine.setCharcodes(target.obj, newCodes));
-    if (devNatural) add('SetPositions', false, 'DEV MODE: skipped (stock engine)');
-    else add('SetPositions', engine.setPositions(target.obj, xs.slice(1)));
-    add('GenerateContent', engine.m.FPDFPage_GenerateContent(before.page));
-    edited = engine.saveNonIncremental(before.d);
-    before.close();
 
     // Independent reference: same page, target authored with spec TJ math.
     ({ bytes: refBytes } = await buildPdf(spec, {
       replaceTarget: (r) => ({ ...r, show: specShow(newCodes, xs.slice(1), { ...run }, widthOf) }),
     }));
+
+    // P8_DEV_REFERENCE=1 (local development on a stock engine only): use the
+    // reference PDF as the "edited" file to validate layouts and every
+    // non-engine check before a CI cycle. Never set in CI.
+    const devReference = process.env.P8_DEV_REFERENCE === '1' && !engine.hasSetPositions;
+    if (!engine.hasSetPositions && !devReference) {
+      add('FPDFText_SetPositions exported', false, 'engine lacks SetPositions');
+      before.close();
+      return { checks };
+    }
+    if (devReference) {
+      add('SetPositions', false, 'DEV MODE: reference PDF stands in for the engine output');
+      edited = refBytes;
+    } else {
+      add('SetCharcodes', engine.setCharcodes(target.obj, newCodes));
+      add('SetPositions', engine.setPositions(target.obj, xs.slice(1)));
+      add('GenerateContent', engine.m.FPDFPage_GenerateContent(before.page));
+      edited = engine.saveNonIncremental(before.d);
+    }
+    before.close();
   }
 
   // ---- save / reopen ---------------------------------------------------------
@@ -410,46 +461,73 @@ async function runFixture(engine, fx) {
   add('old glyph codes absent from all content streams', !containsSequence(scan.seqs, oldCodes), `${scan.seqs.length} show ops scanned`);
   add('new glyph codes present in content', containsSequence(scan.seqs, newCodes.filter((c) => c !== undefined)));
 
-  const newTarget = findTarget(engine, after, fx.edit.neu);
-  add('one logical text object holds the new text', !!newTarget, newTarget ? `${newTarget.glyphs.length} glyphs in one object` : 'split or missing');
+  // The edited object is the text object at the target's page-object index.
+  const newObj = objectAt(engine, after, targetIndex);
+  const newGlyphs = newObj ? glyphsOf(engine, after, newObj) : [];
+  const objText = newObj ? engine.textObjText(newObj, after.tp) : '';
+  add(
+    'one logical text object holds exactly the new text',
+    !!newObj && objText === fx.edit.neu,
+    newObj ? `object text ${JSON.stringify(objText)} (${newGlyphs.length} real glyphs)` : 'target object missing',
+  );
   add(
     'object census (no overlay/raster/extra objects)',
     afterCensus.text === beforeCensus.text && afterCensus.image === beforeCensus.image && afterCensus.total === beforeCensus.total && afterCensus.modes === beforeCensus.modes,
     `before ${JSON.stringify(beforeCensus)} after ${JSON.stringify(afterCensus)}`,
   );
 
-  let drift = Infinity;
-  if (newTarget && newTarget.glyphs.length === expectedPage.length) {
-    drift = 0;
-    newTarget.glyphs.forEach((g, i) => {
-      drift = Math.max(drift, Math.hypot(g.x - expectedPage[i].x, g.y - expectedPage[i].y));
-    });
+  const d0 = nonSpaceDrift(newGlyphs, expectedPage, fx.edit.neu);
+  add('glyph origin drift (PDFium, reopened)', d0.drift <= TOL.glyphDriftPt, `${d0.detail} (tol ${TOL.glyphDriftPt})`);
+  const start = newGlyphs[0];
+  const origStart = target.glyphs[0];
+  const startDrift = start ? Math.hypot(start.x - origStart.x, start.y - origStart.y) : Infinity;
+  add('run start anchored at original origin', startDrift <= TOL.glyphDriftPt, `${Number.isFinite(startDrift) ? startDrift.toExponential(3) : startDrift} pt`);
+  if (layout.prefix > 0) {
+    let pd = 0;
+    for (let i = 0; i < layout.prefix; i++) {
+      const a = newGlyphs[i];
+      const b = target.glyphs[i];
+      pd = a && b ? Math.max(pd, Math.hypot(a.x - b.x, a.y - b.y)) : Infinity;
+    }
+    add('unchanged prefix glyphs did not move', pd <= TOL.glyphDriftPt, `${layout.prefix} glyphs, max ${pd.toExponential(3)} pt`);
   }
-  add('glyph origin drift (PDFium, reopened)', drift <= TOL.glyphDriftPt, `${Number.isFinite(drift) ? drift.toExponential(3) : drift} pt (tol ${TOL.glyphDriftPt})`);
+  if (layout.fit && !layout.fit.skipped) {
+    const adv = (i, codes, text) => advance(codes[i], text[i] === ' ', run, widthOf);
+    const oldEnd = apply(M, pageToObjectPositions(M, target.glyphs).xs.at(-1) + adv(oldCodes.length - 1, oldCodes, fx.edit.old), 0);
+    const lastExp = layout.xs.at(-1) + adv(newCodes.length - 1, newCodes, fx.edit.neu);
+    const newEnd = apply(M, lastExp, 0);
+    const endDrift = Math.hypot(newEnd.x - oldEnd.x, newEnd.y - oldEnd.y);
+    add('run width preserved (slack at real spaces only)', endDrift <= TOL.glyphDriftPt, `${endDrift.toExponential(3)} pt; ${JSON.stringify(layout.fit)}`);
+  }
 
   if (pj) {
+    // The PDF.js item that starts the new run: the non-blank item nearest to
+    // the expected first origin whose text begins the new text.
     const first = expectedPage[0];
-    const item = pj.items.find((it) => it.str && fx.edit.neu.startsWith(it.str.trimEnd().slice(0, 3)));
-    const d = item ? Math.hypot(item.x - first.x, item.y - first.y) : Infinity;
+    const compactNew = fx.edit.neu.replace(/\s/g, '');
+    const cands = pj.items
+      .filter((it) => it.str.trim() && compactNew.startsWith(it.str.replace(/\s/g, '').slice(0, Math.min(3, compactNew.length))))
+      .map((it) => Math.hypot(it.x - first.x, it.y - first.y));
+    const d = cands.length ? Math.min(...cands) : Infinity;
     add('PDF.js run origin', d <= TOL.pdfjsOriginPt, `${Number.isFinite(d) ? d.toFixed(4) : 'no item'} pt`, { advisory: !!fx.pdfjsGeometryAdvisory });
   }
 
   // Pixels: everything outside the edited object must be identical.
-  const newBounds = newTarget ? engine.bounds(newTarget.obj) : null;
-  const origPg = openPage(engine, original);
-  const origT = findTarget(engine, origPg, fx.edit.old);
-  const oldBounds = engine.bounds(origT.obj);
-  origPg.close();
+  const newBounds = newObj ? engine.bounds(newObj) : null;
+  const oldBounds = (() => {
+    const pg = openPage(engine, original);
+    const b = engine.bounds(objectAt(engine, pg, targetIndex));
+    pg.close();
+    return b;
+  })();
   const refPg = openPage(engine, refBytes);
-  const refT = findTarget(engine, refPg, fx.edit.neu);
-  const refBounds = refT ? engine.bounds(refT.obj) : oldBounds;
+  const refObj = objectAt(engine, refPg, targetIndex);
+  const refBounds = refObj ? engine.bounds(refObj) : oldBounds;
   const refRender = engine.render(refPg.page, SCALE);
-  let refDrift = Infinity;
-  if (refT && refT.glyphs.length === expectedPage.length) {
-    refDrift = 0;
-    refT.glyphs.forEach((g, i) => (refDrift = Math.max(refDrift, Math.hypot(g.x - expectedPage[i].x, g.y - expectedPage[i].y))));
-  }
+  const refD = refObj ? nonSpaceDrift(glyphsOf(engine, refPg, refObj), expectedPage, fx.edit.neu) : { drift: Infinity, detail: 'missing' };
+  const refDrift = refD.drift;
   refPg.close();
+  add('edited object bounds available', !!newBounds);
   const editRect = unionRect(oldBounds, newBounds ?? oldBounds, refBounds);
   const u1 = diff(beforeRender, afterRender, { scale: SCALE, pageHeight, exclude: [editRect] });
   add('PDFium untouched-area pixels (288 dpi)', u1.changed === 0, `${u1.changed} changed of ${u1.total}, max Δ ${u1.maxDelta}`);
@@ -547,7 +625,7 @@ for (const fx of FIXTURES) {
   } catch (e) {
     r = { checks: [{ name: 'fixture ran', pass: false, detail: e.stack?.split('\n').slice(0, 3).join(' | ') }] };
   }
-  results.push({ id: fx.id, title: fx.title, risk: !!fx.risk, ...r });
+  results.push({ id: fx.id, title: fx.title, risk: !!fx.risk, guard: !!fx.guard, ...r });
 }
 try {
   results.push({ id: 'R', title: 'API rejection (no mutation on invalid input)', ...(await runNegative(engine)) });
@@ -571,18 +649,31 @@ const RISK_REQUIRED = new Set([
   'reopen in PDFium',
   'reopen in PDF.js',
 ]);
+const GUARD_REQUIRED = new Set([
+  'target object uniquely located',
+  'page→object geometry gate',
+  'semantic gap lint rejects this layout',
+  'SetCharcodes',
+  'SetPositions',
+  'GenerateContent',
+  'non-incremental save',
+  'reopen in PDFium',
+  'reopen in PDF.js',
+]);
 let gatePass = true;
 const lines = [];
 const md = ['# NoblePDF True Edit — Phase 8 regression report', '', `Engine: \`pdfium.wasm\` sha256 \`${engine.info.wasmSha256}\` (${engine.info.wasmBytes} B), \`index.js\` sha256 \`${engine.info.jsSha256}\``, '', '| Fixture | Result | Failed required checks |', '|---|---|---|'];
 for (const r of results) {
-  const required = r.checks.filter((c) => !c.advisory && (!r.risk || RISK_REQUIRED.has(c.name)));
+  const required = r.checks.filter(
+    (c) => !c.advisory && (r.guard ? GUARD_REQUIRED.has(c.name) : !r.risk || RISK_REQUIRED.has(c.name)),
+  );
   const failed = required.filter((c) => !c.pass);
   const pass = failed.length === 0 && r.checks.length > 0;
   r.result = pass ? 'PASS' : 'FAIL';
   if (!pass) gatePass = false;
-  lines.push(`\n[${r.result}] ${r.id} — ${r.title}${r.risk ? ' (risk fixture: must be blocked)' : ''}`);
+  lines.push(`\n[${r.result}] ${r.id} — ${r.title}${r.risk ? ' (risk fixture: must be blocked)' : r.guard ? ' (guard fixture: lint must reject)' : ''}`);
   for (const c of r.checks) {
-    const tag = c.pass ? 'pass' : c.advisory || (r.risk && !required.includes(c)) ? 'info' : 'FAIL';
+    const tag = c.pass ? 'pass' : c.advisory || ((r.risk || r.guard) && !required.includes(c)) ? 'info' : 'FAIL';
     lines.push(`    ${tag.padEnd(4)}  ${c.name}${c.detail ? ` — ${c.detail}` : ''}`);
   }
   md.push(`| ${r.id} — ${r.title} | **${r.result}** | ${failed.map((c) => `${c.name} (${c.detail ?? ''})`).join('; ') || '—'} |`);
