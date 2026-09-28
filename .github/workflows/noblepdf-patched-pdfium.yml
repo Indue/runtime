@@ -1,0 +1,129 @@
+name: NoblePDF Patched PDFium 2.15.1
+
+on:
+  push:
+    branches:
+      - noblepdf-setpositions-exact
+    paths:
+      - ".github/workflows/noblepdf-patched-pdfium.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-patched-pdfium:
+    name: Build patched PDFium WASM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout exact NoblePDF patched runtime
+        uses: actions/checkout@v4
+        with:
+          ref: a91449d77ceb56fe000e198d1b8a75f68f0a4795
+          path: runtime-src
+          fetch-depth: 1
+
+      - name: Checkout exact EmbedPDF v2 wrapper
+        uses: actions/checkout@v4
+        with:
+          repository: embedpdf/embed-pdf-viewer
+          ref: dfb2df818065c704a0241beb0791e2fd0d55a10e
+          path: viewer
+          submodules: false
+          fetch-depth: 1
+
+      - name: Install NoblePDF patched source
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          rm -rf "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src"
+          cp -a \
+            "$GITHUB_WORKSPACE/runtime-src" \
+            "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src"
+
+          test "$(git -C "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src" rev-parse HEAD)" = \
+            "a91449d77ceb56fe000e198d1b8a75f68f0a4795"
+
+          grep -n "FPDFText_SetPositions" \
+            "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src/public/fpdf_edit.h"
+
+          grep -n "FPDFText_SetPositions" \
+            "$GITHUB_WORKSPACE/viewer/packages/pdfium/pdfium-src/fpdfsdk/fpdf_edittext.cpp"
+
+      - name: Verify PDFium wrapper version
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd "$GITHUB_WORKSPACE/viewer/packages/pdfium"
+
+          VERSION="$(node -p "require('./package.json').version")"
+
+          echo "EmbedPDF PDFium package version: $VERSION"
+
+          test "$VERSION" = "2.15.1"
+
+      - name: Build patched PDFium WASM
+        shell: bash
+        working-directory: viewer/packages/pdfium
+        run: |
+          set -euxo pipefail
+
+          docker compose build pdfium-build
+          docker compose run --rm pdfium-build
+
+      - name: Verify generated SetPositions export
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          VENDOR="$GITHUB_WORKSPACE/viewer/packages/pdfium/src/vendor"
+
+          test -f "$VENDOR/pdfium.wasm"
+          test -f "$VENDOR/pdfium.js"
+          test -f "$VENDOR/functions.ts"
+
+          grep -n "FPDFText_SetPositions" "$VENDOR/functions.ts"
+
+          ls -lh "$VENDOR/pdfium.wasm"
+
+      - name: Build @embedpdf/pdfium distribution
+        shell: bash
+        working-directory: viewer/packages/pdfium
+        run: |
+          set -euxo pipefail
+
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run build
+
+      - name: Verify NoblePDF deploy files
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          DIST="$GITHUB_WORKSPACE/viewer/packages/pdfium/dist"
+
+          test -f "$DIST/index.js"
+          test -f "$DIST/index.browser.js"
+          test -f "$DIST/pdfium.wasm"
+
+          grep -q "FPDFText_SetPositions" "$DIST/index.js"
+
+          echo ""
+          echo "=== NoblePDF patched PDFium build ==="
+          ls -lh "$DIST/index.js"
+          ls -lh "$DIST/index.browser.js"
+          ls -lh "$DIST/pdfium.wasm"
+          sha256sum "$DIST/index.js"
+          sha256sum "$DIST/pdfium.wasm"
+
+      - name: Upload patched PDFium 2.15.1
+        uses: actions/upload-artifact@v4
+        with:
+          name: noblepdf-pdfium-2.15.1-setpositions
+          path: viewer/packages/pdfium/dist/
+          if-no-files-found: error
+          retention-days: 14
