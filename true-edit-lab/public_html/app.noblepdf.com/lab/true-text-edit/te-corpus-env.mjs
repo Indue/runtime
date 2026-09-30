@@ -15,7 +15,7 @@
 import { environmentAudit } from './te-env.mjs?v=2';
 import { PDFJS_PIN } from './te-render.mjs?v=1';
 
-export const TE_CORPUS_ENV_VERSION = 'te-corpus-env-2';
+export const TE_CORPUS_ENV_VERSION = 'te-corpus-env-3';
 export const PHASE10_CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; media-src 'none'; manifest-src 'none'";
 export const PAGE_SCRIPTS = Object.freeze(['phase8-csp-guard.js', 'phase10-net-guard.js', 'phase10-corpus.js']);
 export const ENGINE_BASE = '/vendor/pdfium-2.15.1-setpositions/';
@@ -27,7 +27,7 @@ export const ENGINE_BASE = '/vendor/pdfium-2.15.1-setpositions/';
 // else fails: unknown or extra query keys, other values, a fragment, other paths. A query can
 // carry data to the server, so no value outside this policy is accepted.
 export const LAB_QUERIES = Object.freeze({
-  'phase8-csp-guard.js': '?v=1', 'phase10-net-guard.js': '?v=1', 'phase8.css': '?v=2', 'phase9.css': '?v=1', 'phase10.css': '?v=1', 'phase10-favicon.png': '?v=1', 'phase10-corpus.js': '?v=1',
+  'phase8-csp-guard.js': '?v=1', 'phase10-net-guard.js': '?v=1', 'phase10-base.css': '?v=1', 'phase9.css': '?v=1', 'phase10.css': '?v=1', 'phase10-favicon.png': '?v=1', 'phase10-corpus.js': '?v=1',
   'te-engine.mjs': '?v=1', 'te-render.mjs': '?v=1', 'phase8-verify.mjs': '?v=1', 'te-corpus.mjs': '?v=1', 'te-corpus-env.mjs': '?v=1', 'te-env.mjs': '?v=2',
   'te-pipeline.mjs': '?v=1', 'te-edit.mjs': '?v=1', 'te-pdf.mjs': '?v=1', 'te-data.mjs': '?v=1', 'te-ttf.mjs': '?v=1',
 });

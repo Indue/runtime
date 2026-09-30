@@ -16,6 +16,7 @@ Writes tests/results/phase10-browser-results.json and .txt.
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,8 @@ RESULTS = os.path.join(PKG, 'tests', 'results')
 PORT = int(os.environ.get('PORT', '8793'))
 BASE = f'http://localhost:{PORT}'
 PAGE = '/lab/true-text-edit/phase10-corpus.html'
+# SHA-256 of the a3f9038 phase8.css; phase10-base.css is its byte copy (build_phase10_package.py).
+FROZEN_PHASE8_CSS = 'd36798cccf827b2c1fb7a6c510fe3761e2e86a6ceb517eaef779d5cac5ad03a7'
 LAB_DIR = os.path.join(PKG, 'public_html', 'app.noblepdf.com', 'lab', 'true-text-edit')
 FIX_DIR = os.path.join(LAB_DIR, 'fixtures-phase9')
 MANIFEST = json.loads(open(os.path.join(FIX_DIR, 'manifest.txt'), 'rb').read().decode('utf-8'))
@@ -528,12 +531,17 @@ def c19_host_files(r):
     emulated live host (403 for every *.json URL), must return 200 with its pinned SHA-256."""
     r.open()
     pins = []
+    unpinned = []
     for lst in ('phase10-deploy-files.txt', 'phase10-required-unchanged.txt'):
         for line in open(os.path.join(PKG, 'deploy', lst), encoding='ascii'):
             if line.strip():
                 want, rel = line.split()
-                if want != 'ANY' and rel.startswith('lab/'):
+                if not re.fullmatch(r'[0-9a-f]{64}', want):
+                    unpinned.append(rel)
+                if rel.startswith('lab/'):
                     pins.append((want, rel))
+    r.check(not unpinned, f'every Phase 10 list entry is pinned by SHA-256, none as ANY {unpinned}')
+    r.check(not any(rel.endswith('/phase8.css') for _, rel in pins), 'phase8.css is in neither Phase 10 list')
     got = r.ev("""async (urls) => {
       const out = [];
       for (const u of urls) {
@@ -545,7 +553,7 @@ def c19_host_files(r):
       return out;
     }""", ['/' + rel for _, rel in pins])
     bad = [f"{g['u']} HTTP {g['status']}" for g, (want, _) in zip(got, pins) if g['status'] != 200 or g['sha'] != want]
-    r.check(len(pins) >= 6 and not bad, f'{len(pins)} lab files served with their pinned SHA-256 through the emulated live host {bad[:4] if bad else ""}')
+    r.check(len(pins) == 19 and not bad, f'{len(pins)} lab files (8 Phase 10 deploy + 11 required) served with their pinned SHA-256 through the emulated live host {bad[:4] if bad else ""}')
 
 
 def c17_upload_refused(r):
@@ -624,6 +632,33 @@ def c21_query_privacy(r):
     r.check(len(srv) >= 2, f'the harness server did receive those query strings ({len(srv)}): exactly why the policy must refuse them')
 
 
+def c22_self_contained_styles(r):
+    """The live phase8.css is not the a3f9038 build. The Phase 10 page must not depend on it:
+    it loads its own phase10-base.css (the byte copy of the frozen a3f9038 phase8.css), never
+    requests phase8.css, renders with the frozen styles, and a phase8.css request fails the
+    exact URL policy. The emulated live host serves an 826-byte different phase8.css throughout."""
+    with urllib.request.urlopen(BASE + '/lab/true-text-edit/phase8.css', timeout=10) as resp:
+        live = resp.read()
+    r.check(len(live) == 826 and sha(live) != FROZEN_PHASE8_CSS, f'the emulated live host serves an 826-byte phase8.css that is not the a3f9038 build ({sha(live)[:12]}...)')
+    configure()  # reset the server log: the probe above is not a page request
+    r.open()
+    sheets = r.ev("() => [...document.styleSheets].map((s) => s.href && new URL(s.href).pathname.split('/').pop() + new URL(s.href).search)")
+    r.check(sheets == ['phase10-base.css?v=1', 'phase9.css?v=1', 'phase10.css?v=1'], f'the page applies exactly phase10-base.css, phase9.css, phase10.css ({sheets})')
+    r.check(r.preflight() == 'YES', 'ready (engine, PDF.js, CSP, network) with the different live phase8.css on the host')
+    style = r.ev("() => ({ bg: getComputedStyle(document.body).backgroundColor, radius: getComputedStyle(document.querySelector('.card')).borderTopLeftRadius, brand: getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() })")
+    r.check(style['bg'] == 'rgb(246, 248, 252)' and style['radius'] == '18px' and style['brand'] == '#5a45d6', f'the frozen a3f9038 styles apply (from phase10-base.css), not the live phase8.css ({style})')
+    got = r.ev("""async () => { const b = new Uint8Array(await (await fetch('./phase10-base.css?v=1', { cache: 'no-store' })).arrayBuffer()); return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', b)), (x) => x.toString(16).padStart(2, '0')).join(''); }""")
+    r.check(got == FROZEN_PHASE8_CSS, f'phase10-base.css is served byte-identical to the a3f9038 phase8.css ({got[:12]}...)')
+    r.check(r.hook('audit()')['pass'], 'audit PASS: every request so far is inside the exact URL policy')
+    r.check(not any('/phase8.css' in x['url'] for x in r.requests), f'the browser never requested phase8.css ({len(r.requests)} requests)')
+    r.check(not any(x['path'].endswith('/phase8.css') for x in http_get('/__p10/requests')), 'the server never received a phase8.css request from the page')
+    r.ev("async () => { await (await fetch('./phase8.css?v=2', { cache: 'no-store' })).arrayBuffer(); }")
+    a = r.hook('audit()')
+    hit = [f for f in a['fail'] if 'phase8.css?v=2' in f]
+    r.check(not a['pass'] and hit and 'outside the pinned file list' in hit[0], f'a phase8.css?v=2 request (the Phase 9 URL) fails the audit: not in the Phase 10 allowlist ({hit[:1]})')
+    r.check(r.page.is_disabled('#files'), 'corpus processing disabled')
+
+
 SCENARIOS = [
     dict(id='C01', run=c01_preflight, note='Preflight: Run #10 identity, API, pinned PDF.js, exact CSP, complete network ledger, no service worker'),
     dict(id='C02', run=c02_local_no_upload, note='Local file path: <input type=file> -> File.arrayBuffer -> analysis; no request with a body; file name never sent'),
@@ -646,6 +681,7 @@ SCENARIOS = [
     dict(id='C19', run=c19_host_files, note='Live-host compatibility: every Phase 10 deploy file and required lab file served with its pin through the emulated host (403 for *.json)'),
     dict(id='C20', run=c20_favicon, note='Favicon: the declared pinned icon is allowed; /favicon.ico and unpinned icons fail the audit and disable processing'),
     dict(id='C21', run=c21_query_privacy, note='Query privacy: phase10.css?secret=JaneCitizen, %PDF and fixture-text values, extra keys, wrong versions, bad engine nonces and PDF.js queries all fail closed (fetch and Resource Timing)'),
+    dict(id='C22', run=c22_self_contained_styles, note='Self-contained styles: with an 826-byte live phase8.css that is not the a3f9038 build, the page uses phase10-base.css (frozen copy), never requests phase8.css, renders the frozen styles; a phase8.css request fails the audit'),
 ]
 NO_REQUEST_CHECK = {'C16', 'C17', 'C18'}  # these scenarios deliberately make the requests the check forbids
 ALLOW_FOREIGN = {'C12': (f'http://127.0.0.1:{PORT}/__p10/monitor.js',)}  # the injected script before the CSP loads by design

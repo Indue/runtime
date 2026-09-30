@@ -24,6 +24,13 @@ const SW = "self.addEventListener('install', (e) => self.skipWaiting());\nself.a
 // The install page is outside the worker's scope, so it waits for the worker's own
 // "activated" state (navigator.serviceWorker.ready would never resolve here).
 const SW_INSTALL = '<!doctype html><meta charset="utf-8"><title>sw install (harness)</title><script>navigator.serviceWorker.register("/__p10/sw.js", { scope: "/lab/true-text-edit/" }).then((reg) => new Promise((res) => { if (reg.active) return res(); const w = reg.installing || reg.waiting; w.addEventListener("statechange", () => { if (w.state === "activated") res(); }); })).then(() => { document.title = "sw ready"; }).catch((e) => { document.title = "sw failed " + e; });</script>';
+// host=live also serves what app.noblepdf.com holds at lab/true-text-edit/phase8.css: a file of
+// about 826 bytes that is NOT the a3f9038 build (found by the Phase 10 deploy dry run on
+// 2026-09-30). The emulation is exactly 826 bytes and would turn the page magenta with square
+// cards, so any use of it by the Phase 10 page is visible.
+const LIVE_PHASE8_HEAD = '/* emulated live phase8.css: NOT the a3f9038 build (Phase 10 harness) */\nbody{background:#ff00ff}.card{border-radius:0;border:4px solid #ff00ff}.shell{width:100%}\n';
+const LIVE_PHASE8_CSS = Buffer.from(`${LIVE_PHASE8_HEAD}/*${'x'.repeat(826 - LIVE_PHASE8_HEAD.length - 5)}*/\n`, 'ascii');
+if (LIVE_PHASE8_CSS.length !== 826) throw new Error('live phase8.css emulation must be 826 bytes');
 const scenario = { engine: 'real', inject: 'none', csp: 'strict', host: 'live' };
 const log = [];
 
@@ -92,6 +99,7 @@ const server = http.createServer((req, res) => {
       // host=live: the measured app.noblepdf.com rule, 403 for every *.json URL.
       if (scenario.host === 'live' && /\.json$/i.test(p)) return send(res, 403, Buffer.from('403 Forbidden'), 'text/html; charset=iso-8859-1');
       const PREFIX = '/lab/true-text-edit/';
+      if (scenario.host === 'live' && p === `${PREFIX}phase8.css`) return send(res, 200, LIVE_PHASE8_CSS, TYPES['.css']);
       if (p.startsWith(PREFIX) && !p.includes('..')) {
         const f = path.join(LAB, p.slice(PREFIX.length));
         if (existsSync(f) && statSync(f).isFile()) {

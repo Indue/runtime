@@ -4,7 +4,9 @@
 #         sh deploy/phase10-lab-rollback.sh BACKUP_DIR --apply   restore
 # Restores every file the deploy replaced (from BACKUP_DIR/files, hash-checked) and
 # removes every file the deploy created. HTML first, then everything else, so no page
-# ever references a module that is already gone. POSIX sh only.
+# ever references a module that is already gone. Only Phase 10-owned names are restored or
+# removed; a backup list naming any other file (phase8.css, a Phase 9 file) is refused.
+# POSIX sh only.
 set -eu
 [ $# -ge 1 ] || { sed -n '2,7p' "$0"; exit 2; }
 BK=$1; shift
@@ -29,6 +31,12 @@ for list in replaced.txt created.txt created-dirs.txt; do
     [ -n "$rel" ] || continue
     case "$rel" in lab/true-text-edit/*) ;; *) echo "STOP: $list names a path outside lab/true-text-edit: $rel" >&2; exit 1 ;; esac
     case "/$rel/" in */../*|*/./*|*//*) echo "STOP: $list names a path with empty, . or .. segments: $rel" >&2; exit 1 ;; esac
+    [ "$list" = created-dirs.txt ] && continue
+    case "$rel" in
+      lab/true-text-edit/phase10.css|lab/true-text-edit/phase10-*|lab/true-text-edit/te-corpus.mjs|lab/true-text-edit/te-corpus-env.mjs) ;;
+      *) echo "STOP: $list names a file Phase 10 does not own: $rel" >&2; exit 1 ;;
+    esac
+    case "${rel#lab/true-text-edit/}" in */*) echo "STOP: $list names a file Phase 10 does not own: $rel" >&2; exit 1 ;; esac
   done < "$BK/$list"
 done
 while read -r want rel; do

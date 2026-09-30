@@ -1,8 +1,11 @@
 #!/bin/sh
 # NoblePDF True Edit lab deploy: Phase 10 real-PDF corpus harness (local-only PDFs).
-# Lab-only: writes the Phase 10 files under lab/true-text-edit/ and nowhere else. The Phase 9
-# lab files it builds on (a3f9038, including the te-env.mjs network-audit fix), production
-# editor files and vendor folders are only READ (hash checks), never written.
+# Lab-only: writes the Phase 10-owned files under lab/true-text-edit/ and nowhere else. The
+# Phase 9 lab files it builds on (a3f9038, including the te-env.mjs network-audit fix),
+# production editor files and vendor folders are only READ (hash checks), never written.
+# Phase 8 and Phase 9 files (phase8.css included) are never written, replaced, removed or backed
+# up: the script refuses any deploy entry that is not a Phase 10-owned name. phase8.css is not
+# even read: Phase 10 ships its own phase10-base.css.
 #
 # Usage (from anywhere):   sh deploy/phase10-lab-deploy.sh           dry run (default)
 #                          sh deploy/phase10-lab-deploy.sh --apply   backup, deploy, verify
@@ -33,6 +36,14 @@ sha_of() {
   else openssl dgst -sha256 "$1" | sed 's/^.*= //'; fi
 }
 die() { echo "STOP: $*" >&2; exit 1; }
+# The only names Phase 10 owns and may write (phase10.css, phase10-*.*, te-corpus*.mjs).
+owned() {
+  case "$1" in
+    lab/true-text-edit/phase10.css|lab/true-text-edit/phase10-*|lab/true-text-edit/te-corpus.mjs|lab/true-text-edit/te-corpus-env.mjs) ;;
+    *) return 1 ;;
+  esac
+  case "${1#lab/true-text-edit/}" in */*) return 1 ;; esac
+}
 
 echo "NoblePDF True Edit lab deploy ($RELEASE) - $( [ "$APPLY" = 1 ] && echo APPLY || echo 'DRY RUN (nothing will be changed)' )"
 echo "Package:  $PKG"
@@ -51,6 +62,8 @@ while read -r want rel; do
   case "$rel" in lab/true-text-edit/*) ;; *) die "refusing to deploy outside lab/true-text-edit: $rel" ;; esac
   # The prefix alone is not enough: lab/true-text-edit/../../x resolves outside the lab.
   case "/$rel/" in */../*|*/./*|*//*) die "refusing path with empty, . or .. segments: $rel" ;; esac
+  owned "$rel" || die "refusing to deploy a file Phase 10 does not own: $rel"
+  cut -d" " -f2- "$REQ" | grep -qxF "$rel" && die "refusing to deploy a required (read-only) file: $rel"
   [ -f "$SRC/$rel" ] || die "package file missing: $rel"
   [ "$(sha_of "$SRC/$rel")" = "$want" ] || die "package file corrupted: $rel"
   n=$((n + 1))
@@ -61,9 +74,10 @@ echo
 echo "2. Required server files (read only)"
 while read -r want rel; do
   [ -n "$rel" ] || continue
+  case "$want" in ''|*[!0-9a-f]*) die "required file without a SHA-256 pin (ANY is not accepted): $rel" ;; esac
+  [ "${#want}" = 64 ] || die "required file without a SHA-256 pin (ANY is not accepted): $rel"
   [ -f "$APP_ROOT/$rel" ] || die "required server file missing: $rel"
   got=$(sha_of "$APP_ROOT/$rel")
-  if [ "$want" = "ANY" ]; then echo "   present   $rel"; continue; fi
   [ "$got" = "$want" ] || die "server file differs from its pinned build: $rel ($got). Nothing was changed."
   echo "   verified  $rel"
 done < "$REQ"

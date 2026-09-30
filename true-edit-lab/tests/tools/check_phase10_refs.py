@@ -10,7 +10,13 @@
     the page makes nor accepts a query it does not make;
   - the engine query policy (?te=patched-<12 hex>) matches what te-engine.mjs builds from the
     page's label and 6-byte nonce;
-  - Phase 10 imports te-env.mjs with the same URL (?v=2) as the frozen Phase 9 pages.
+  - Phase 10 imports te-env.mjs with the same URL (?v=2) as the frozen Phase 9 pages;
+  - Phase 10 is self-contained for its styles: the page loads exactly phase10-base.css?v=1,
+    phase9.css?v=1 and phase10.css?v=1, in that order, and phase8.css appears nowhere in the
+    page, its module graph, the URL policy or either Phase 10 list (the live phase8.css is not
+    the a3f9038 build; phase10-base.css is its frozen copy, checked by build_phase10_package.py);
+  - every Phase 10 deploy file is a Phase 10-owned name (phase10.css, phase10-*, te-corpus*.mjs)
+    and no Phase 9 list names it.
 Usage: python3 tests/tools/check_phase10_refs.py"""
 import os
 import re
@@ -63,6 +69,9 @@ for m in re.finditer(r'(?:src|href)="([^"]+)"', html):
         continue
     path, _, q = u.partition('?')
     use(path, '?' + q if q else '')
+sheets = re.findall(r'<link rel="stylesheet" href="([^"]+)"', html)
+if sheets != ['phase10-base.css?v=1', 'phase9.css?v=1', 'phase10.css?v=1']:
+    bad.append(f'the page must load exactly phase10-base.css?v=1, phase9.css?v=1, phase10.css?v=1 in that order (found {sheets})')
 icons = re.findall(r'<link rel="icon"[^>]*href="([^"]+)"', html)
 if icons != ['phase10-favicon.png?v=1']:
     bad.append(f'the page must declare exactly one icon, phase10-favicon.png?v=1 (found {icons})')
@@ -106,6 +115,23 @@ if "label: 'patched'" not in page or 'crypto.getRandomValues(new Uint8Array(6))'
     bad.append('phase10-corpus.js no longer loads the engine as label patched with a 6-byte hex nonce')
 if env_imports != {'?v=2'}:
     bad.append(f'te-env.mjs must be imported as ?v=2 (the a3f9038 URL); found {sorted(env_imports)}')
+if 'phase8.css' in html or 'phase8.css' in used or 'phase8.css' in policy or any(r.endswith('/phase8.css') for r in list(deploy) + list(req)):
+    bad.append('phase8.css is referenced by the Phase 10 page, its module graph, the URL policy or a Phase 10 list')
+for f in used:
+    if f.endswith('.js') or f.endswith('.mjs') or f.endswith('.css'):
+        if 'phase8.css' in open(os.path.join(LABDIR, f), encoding='ascii').read():
+            bad.append(f'{f} references phase8.css')
+phase9_listed = set()
+for name in ('deploy-files.txt', 'required-unchanged.txt'):
+    lp = os.path.join(ROOT, 'deploy', name)
+    if os.path.isfile(lp):
+        phase9_listed |= set(read_list(name))
+for rel in deploy:
+    base = rel[len('lab/true-text-edit/'):] if rel.startswith('lab/true-text-edit/') else ''
+    if '/' in base or not (base == 'phase10.css' or base.startswith('phase10-') or base in ('te-corpus.mjs', 'te-corpus-env.mjs')):
+        bad.append(f'{rel}: not a Phase 10-owned name; Phase 10 deploys only files it owns')
+    if rel in phase9_listed:
+        bad.append(f'{rel}: a Phase 9 list names it; Phase 10 must not deploy a Phase 9 file')
 print(f'{len(deploy)} Phase 10 deploy files, {len(req)} required files (no ANY); the page loads {len(used)} lab files, each with one exact query, all pinned; URL policy {"matches" if policy == actual else "DIFFERS"}')
 for b in bad:
     print('FAIL', b)

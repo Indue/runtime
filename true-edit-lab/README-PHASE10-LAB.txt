@@ -69,22 +69,29 @@ Privacy and integrity (processing stays disabled unless all pass)
     The audit reruns before every file and edit and after every batch.
   - The page declares its own pinned icon (phase10-favicon.png?v=1), so the browser does not
     request /favicon.ico; /favicon.ico or any other icon URL fails the audit.
+  - The page is self-contained for its styles: it loads phase10-base.css?v=1 (its own byte copy
+    of the frozen a3f9038 phase8.css), phase9.css?v=1 and phase10.css?v=1. It never loads
+    phase8.css, and a phase8.css request fails the audit (not in the URL policy).
 
 Package contents (Phase 10 additions only)
 ------------------------------------------
   public_html/app.noblepdf.com/lab/true-text-edit/
       phase10-corpus.html, phase10-corpus.js, phase10.css      the page
+      phase10-base.css                                         base styles: byte copy of the frozen
+                                                               a3f9038 phase8.css (4964 bytes,
+                                                               d36798cc...), owned by Phase 10
       phase10-favicon.png                                      pinned 16x16 page icon (122 bytes)
       phase10-net-guard.js                                     early network ledger/upload guard
       te-corpus.mjs                                            document analysis, classification,
                                                                verified edit runner, session, export
       te-corpus-env.mjs                                        strict privacy/integrity audit
   deploy/phase10-lab-deploy.sh, phase10-lab-rollback.sh       dry run by default, --apply
-  deploy/phase10-deploy-files.txt                             the 7 files deployed (SHA-256)
-  deploy/phase10-required-unchanged.txt                       16 live files that must match their
+  deploy/phase10-deploy-files.txt                             the 8 Phase 10-owned files deployed
+                                                              (SHA-256)
+  deploy/phase10-required-unchanged.txt                       15 live files that must match their
                                                               a3f9038 / Run #10 / PDF.js pins
-                                                              (none as ANY: phase8.css is pinned
-                                                              to its a3f9038 build d36798cc...)
+                                                              (none as ANY). phase8.css is not one
+                                                              of them: Phase 10 does not use it
   tests/run-phase10.sh, tests/README-PHASE10-TESTS.txt        the Phase 10 test sequence
   .github/workflows/true-edit-phase10-corpus.yml (repository root) CI; builds the package zip
 
@@ -101,19 +108,22 @@ A. Deploy (GoDaddy SSH shell, POSIX sh)
        cd noblepdf-trueedit-phase10-corpus-lab-v1
        sha256sum -c MANIFEST.sha256 | grep -v ': OK$'        (should print nothing)
        sh deploy/phase10-lab-deploy.sh
-     Expected dry run: 7 package files verified; 16 required server files verified (te-env.mjs
-     must be the a3f9038 build; phase8.css must be d36798cc...; if a live file differs the
-     script STOPs and changes nothing); plan "new 7, replace 0, unchanged 0". Any STOP: paste
-     it back. Note: Phase 9 accepted any phase8.css (ANY) and never recorded the live hash, so a
-     STOP on phase8.css means the live copy is not the a3f9038 file: compare it before going on.
+     Expected dry run: 8 package files verified; 15 required server files verified (te-env.mjs
+     must be the a3f9038 build; if a live file differs the script STOPs and changes nothing);
+     plan "new 8, replace 0, unchanged 0". Any STOP: paste it back.
+     phase8.css is neither checked, planned nor written: the live copy (about 826 bytes, found
+     by the 2026-09-30 dry run) is not the a3f9038 build, so Phase 10 ships phase10-base.css
+     instead and leaves phase8.css exactly as it is.
   3. sh deploy/phase10-lab-deploy.sh --apply
      Expected ending: "DEPLOYED phase10-corpus-lab-v1. Backup: ..." Keep the backup path.
-  4. Optional: the dry run again shows "new 0, replace 0, unchanged 7".
+  4. Optional: the dry run again shows "new 0, replace 0, unchanged 8".
   5. Icon check (.png was not probed on the live host like .txt/.pdf/.json): open
      https://app.noblepdf.com/lab/true-text-edit/phase10-favicon.png?v=1 - it must show the
      small purple icon (not 403/404). If it does not, do not use the page: its audit would fail.
   Rollback: sh deploy/phase10-lab-rollback.sh BACKUP_DIR (dry run), then add --apply. It
-  removes the 7 Phase 10 files; Phase 9 files are never touched by either script.
+  removes the 8 Phase 10 files. Both scripts refuse any file name Phase 10 does not own
+  (phase10.css, phase10-*, te-corpus*.mjs), so Phase 8 and Phase 9 files, phase8.css included,
+  are never written, replaced, removed or backed up.
 
 B. Live test (desktop Chrome, fresh tab, hard refresh Ctrl+Shift+R)
 -------------------------------------------------------------------

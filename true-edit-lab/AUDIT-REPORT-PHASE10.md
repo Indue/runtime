@@ -22,11 +22,13 @@ branch; deployment is manual (README-PHASE10-LAB.txt).
 | `te-corpus-env.mjs` | strict audit: Phase 9 `environmentAudit` (te-env.mjs?v=2, unchanged) + exact CSP, script order, ledger allowlist, service worker = FAIL, analytics globals |
 | `te-corpus.mjs` | whole-document analysis, classification, verified edit runner, session state, export |
 | `phase10-corpus.js`, `phase10.css` | UI |
+| `phase10-base.css` | base styles: byte copy of the frozen a3f9038 `phase8.css` (`d36798cc...`), owned by Phase 10 |
+| `phase10-favicon.png` | pinned page icon |
 
 Reused unchanged: `te-pipeline.mjs` (analyze, documentGates, targetGates, planEdit,
 applyEdit, verifyEdit), `te-engine.mjs` (Run #10 identity), `te-render.mjs` (PDF.js pin,
 render comparison), `te-pdf.mjs`, `te-edit.mjs`, `te-ttf.mjs`, `te-data.mjs`, `te-env.mjs`,
-`phase8-verify.mjs`, `phase8-csp-guard.js`.
+`phase8-verify.mjs`, `phase8-csp-guard.js`. `phase8.css` is not used (see below).
 
 ## Classification rule
 
@@ -55,7 +57,8 @@ selections. The original bytes are never written. Download re-hashes the verifie
 - CSP `connect-src 'self'`, `form-action 'none'`, no eval, no inline script, `frame-src`,
   `media-src` and `manifest-src 'none'`.
 - The network guard refuses any request that carries a body, in addition to the CSP.
-- The ledger allowlist equals the exact set of files the page loads (checked in CI).
+- The ledger allowlist equals the exact set of files the page loads (checked in CI); it no
+  longer contains `phase8.css`.
 - Each processing batch reports its own requests. Expected: pinned URLs (path and exact query) only, 0 bodies.
 - Tests prove it from outside the page: Playwright sees every browser request and the harness
   server logs every request it receives. No scenario may send a body, a non-GET request, PDF
@@ -82,10 +85,32 @@ selections. The original bytes are never written. Download re-hashes the verifie
 - **Raw Producer/Creator strings are opt-in.** The export includes the generator family by
   default. The raw strings (which can name a person, file or organisation) are included only
   when the checkbox or `includeGeneratorStrings: true` asks for them.
-- **phase8.css pinned.** The Phase 9 lists accept any `phase8.css` (ANY); Phase 10 loads it,
-  so its required list now pins it to the a3f9038 hash `d36798cc...` from the frozen Phase 9
-  manifest. No required file is accepted as ANY. The live hash was never recorded, so if the
-  live copy differs, the dry run stops before any write (tested in `phase10_deploy_test.sh`).
+- **phase8.css pinned** (superseded, see the next section). The required list pinned it to the
+  a3f9038 hash, so a different live copy stopped the dry run before any write.
+
+## phase8.css is no longer a Phase 10 dependency (after the live dry-run STOP)
+
+The live deploy dry run stopped on `lab/true-text-edit/phase8.css`: the live file (about 826
+bytes) is substantially different from the frozen a3f9038 build (4964 bytes, `d36798cc...`).
+The Phase 9 lists accept any `phase8.css` (ANY), so Phase 9 never recorded this. The live file
+is left exactly as it is. Phase 10 is now self-contained for its styles:
+
+- `phase10-base.css` is a new Phase 10-owned file, a byte copy of the a3f9038 `phase8.css`
+  (`build_phase10_package.py` checks its SHA-256 against the constant and against the frozen
+  Phase 9 manifest). The page loads `phase10-base.css?v=1`, `phase9.css?v=1`, `phase10.css?v=1`,
+  so it renders exactly as before.
+- `phase8.css` is gone from `phase10-required-unchanged.txt` (15 files, none ANY), from the page
+  and its module graph, and from the exact URL policy: a `phase8.css` request now fails the
+  audit (`check_phase10_refs.py`, Node URL-policy test, browser C22).
+- The deploy script refuses any deploy entry that is not a Phase 10-owned name (`phase10.css`,
+  `phase10-*`, `te-corpus*.mjs`) or that is also a required file, and refuses a required entry
+  without a SHA-256 (ANY). The rollback script refuses a backup list naming any other file.
+  `phase10_deploy_test.sh` proves, with an 826-byte live-style `phase8.css` on the scratch
+  server: the dry run, `--apply` and rollback succeed; the dry run also succeeds with no
+  `phase8.css` at all; `phase8.css` keeps its bytes, mode, mtime and inode throughout and never
+  appears in the backup; `--apply` changes exactly the Phase 10-owned files it has to write.
+- The browser harness host now serves an 826-byte different `phase8.css`, like the live host,
+  for every scenario. C22 checks the page never requests it and renders the frozen styles.
 
 ## Finding: Phase 9 V11 rejects every edit in a multi-page document with text on other pages
 

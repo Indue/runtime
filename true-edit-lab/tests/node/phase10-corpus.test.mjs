@@ -411,11 +411,14 @@ test('exact URL policy: pinned path AND its one exact query; everything else fai
   const why = (u) => urlVerdict(u, P).why || '';
   for (const [f, q] of Object.entries(LAB_QUERIES)) assert.ok(ok(`${f}${q}`), `${f}${q} allowed`);
   assert.ok(ok('phase10-favicon.png?v=1'));
+  assert.ok(ok('phase10-base.css?v=1'), 'the Phase 10-owned base stylesheet is allowed');
+  assert.equal(Object.prototype.hasOwnProperty.call(LAB_QUERIES, 'phase8.css'), false, 'phase8.css is not a Phase 10 dependency');
   assert.ok(ok('/vendor/pdfium-2.15.1-setpositions/pdfium.wasm?te=patched-0123456789ab') && ok('/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-a1b2c3d4e5f6'));
   assert.ok(ok('/vendor/pdfjs-3.11.174/pdf.min.js') && ok('/vendor/pdfjs-3.11.174/pdf.worker.min.js'));
   const refused = [
     'phase10.css?secret=JaneCitizen', 'phase10.css?data=%25PDF-1.7', 'phase10.css?q=Invoice%20Number%3A%2012345', 'phase10.css?rt=1', 'phase10.css?v=2', 'phase10.css?v=1&x=1',
     'phase10.css?x=1&v=1', 'phase10.css?v=01', 'phase10.css?V=1', 'phase10.css?v=1&', 'phase10.css', 'phase10.css?v=1#frag', 'te-env.mjs?v=1', 'phase8.css?v=1',
+    'phase8.css?v=2', 'phase8.css', 'phase10-base.css', 'phase10-base.css?v=2', 'phase10-base.css?v=1&v=1',
     '/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-XYZ', '/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-0123456789AB', '/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-0123456789abc',
     '/vendor/pdfium-2.15.1-setpositions/index.js?te=stock-0123456789ab', '/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-0123456789ab&x=1', '/vendor/pdfium-2.15.1-setpositions/index.js',
     '/vendor/pdfjs-3.11.174/pdf.min.js?v=1', '/vendor/pdfjs-3.11.174/pdf.worker.min.js?x', '/favicon.ico', 'favicon.ico', 'phase10-favicon.png', 'phase10-favicon.png?v=2', 'other-favicon.png?v=1',
@@ -425,6 +428,7 @@ test('exact URL policy: pinned path AND its one exact query; everything else fai
   assert.match(why('phase10.css?secret=JaneCitizen'), /unexpected query/);
   assert.match(why('/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-XYZ'), /unexpected query .* engine/);
   assert.match(why('/favicon.ico'), /outside the pinned file list/);
+  assert.match(why('phase8.css?v=2'), /outside the pinned file list \(\/lab\/true-text-edit\/phase8\.css\)/, 'the Phase 9 stylesheet URL is not allowed on the Phase 10 page');
 });
 
 test('diffText is exactly the Phase 9 editor diff (source extracted from phase9-editor.js)', () => {
