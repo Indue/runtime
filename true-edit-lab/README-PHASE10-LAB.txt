@@ -44,6 +44,8 @@ What it is
   no raw Producer/Creator strings; the generator FAMILY (for example "Microsoft Word") is always
   included. Opt-in options: include file names; text samples redacted to their shape
   ("Aaaa 99") or plain (max 24 characters, plus reason details); raw Producer/Creator strings.
+  The "environment" section always records the test setup, not document data: page and module
+  versions, engine and PDF.js pins, audit verdicts, request counts and the browser user agent.
 
 Privacy and integrity (processing stays disabled unless all pass)
 ------------------------------------------------------------------

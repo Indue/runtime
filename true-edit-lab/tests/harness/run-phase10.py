@@ -478,7 +478,9 @@ def c15_export(r):
     raw = open(dl.value.path(), 'rb').read()
     rep = json.loads(raw.decode('utf-8'))
     r.check(rep['schema'] == 'noblepdf-phase10-corpus-report/1' and len(rep['documents']) == 3, 'export schema and document count')
-    leaks = [x for x in ['Invoice Number', 'Jane Citizen', 'Consulting', '31337', 'invoice-number-longer', 'blocked-signed', 'p10-xref-stream', '%PDF', 'Skia/PDF m128', 'Mozilla/5.0'] if x.encode() in raw]
+    # Exact raw Producer/Creator values of p10-xref-stream.pdf. (A bare "Mozilla/5.0" would also
+    # match the tester's own browser user agent, which environment.userAgent reports on purpose.)
+    leaks = [x for x in ['Invoice Number', 'Jane Citizen', 'Consulting', '31337', 'invoice-number-longer', 'blocked-signed', 'p10-xref-stream', '%PDF', 'Skia/PDF m128', 'Mozilla/5.0 Chrome/128.0.0.0'] if x.encode() in raw]
     r.check(not leaks, f'default export has no text, no file names, no PDF bytes and no raw Producer/Creator ({leaks})')
     r.check(rep['privacy']['generatorStrings'] is False and rep['documents'][2]['generator'] == {'family': 'Chrome print (Skia)'}, 'generator family exported by default; raw strings withheld')
     first = rep['documents'][0]
