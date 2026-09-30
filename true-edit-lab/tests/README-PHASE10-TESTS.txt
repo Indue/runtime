@@ -17,9 +17,12 @@ What each step proves
                              match the tree; required pins are the frozen Phase 9 pins (so
                              te-env.mjs must be the a3f9038 network-audit build).
   phase10-refs-host-compat   every file the page loads (HTML and the full static import graph)
-                             is a Phase 10 deploy file or a pinned required file, uses an
-                             extension the live host serves, and equals the ledger allowlist in
-                             te-corpus-env.mjs; te-env.mjs is imported as ?v=2.
+                             is a Phase 10 deploy file or a pinned required file (none as ANY),
+                             uses an extension the live host serves (.png only for the pinned
+                             favicon), and is loaded with exactly one query that equals the exact
+                             URL policy in te-corpus-env.mjs (LAB_QUERIES); the engine policy
+                             ?te=patched-<12 hex> matches te-engine.mjs and the page's 6-byte
+                             nonce; exactly one icon is declared; te-env.mjs is imported as ?v=2.
   phase10-node-tests         node --test tests/node/phase10-corpus.test.mjs on the REAL Run #10
                              engine and PDF.js 3.11.174:
                               - all 47 fixtures through the corpus analysis and corpus edit path
@@ -47,13 +50,19 @@ What each step proves
                                 and D01 proves both other pages unchanged;
                               - incremental-update and xref-stream inputs are detected and edit
                                 into one clean revision (V01);
-                              - export: no file names, text, reason details or PDF bytes by
-                                default; redacted and plain samples only on request;
+                              - export: no file names, text, reason details, raw Producer/Creator
+                                or PDF bytes by default (generator family only); redacted and plain
+                                samples and raw generator strings only on request;
+                              - exact URL policy: every pinned URL in its exact form passes; about
+                                30 variants fail (secret/%PDF/fixture-text queries, extra or
+                                reordered keys, other versions, fragments, bad engine nonces,
+                                PDF.js queries, /favicon.ico, other paths, other origins);
                               - diffText equals the Phase 9 editor's diff (source extracted from
                                 phase9-editor.js, >1000 pairs); generator family detection.
   phase10-deploy-rollback    deploy/phase10-lab-deploy.sh and rollback against a throwaway app
                              root: refusals (corrupted package, te-env.mjs older than a3f9038,
-                             drifted required file, Phase 9 lab missing, backup inside
+                             phase8.css not the a3f9038 build, drifted required file, Phase 9
+                             lab missing, backup inside
                              public_html, .. paths), dry run changes nothing, writes stay in
                              lab/true-text-edit/, Phase 9 files untouched, rollback restores the
                              tree byte- and mode-identical.
@@ -78,12 +87,19 @@ What each step proves
                                C12 script before the CSP: fail closed
                                C13 service worker controlling the page: fail closed
                                C14 engine not Run #10: fail closed
-                               C15 export: no text/names/bytes by default; redacted on request
-                               C16 ledger completeness: after 300 requests a late unpinned request fails
+                               C15 export: no text/names/bytes/raw Producer-Creator by default;
+                                   redacted samples and raw generator strings only on request
+                               C16 ledger completeness: 300 requests of one pinned URL in its exact
+                                   form pass; a late unpinned request then fails
                                C17 POST/PUT/XHR/beacon/WebSocket refused in the page; audit fails
                                C18 relaxed CSP fails at load; the allowed cross-origin load is named
                                C19 every Phase 10 and required lab file served with its pin by the
                                    emulated live host (403 for *.json)
+                               C20 favicon: the declared pinned icon is allowed; /favicon.ico and
+                                   unpinned icons fail the audit and disable processing
+                               C21 query privacy: ?secret=JaneCitizen, %PDF and fixture-text values,
+                                   extra keys, other versions, bad engine nonces, PDF.js queries and
+                                   a query seen only via Resource Timing all fail closed
   phase10-ascii-check        every text file in the package is ASCII.
 
 Local development without the Run #10 engine (not evidence)

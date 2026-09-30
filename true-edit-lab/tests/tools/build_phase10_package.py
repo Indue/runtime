@@ -8,10 +8,13 @@
   python3 tests/tools/build_phase10_package.py OUT_DIR        also assembles OUT_DIR/<release>/,
                                                               its MANIFEST.sha256 and OUT_DIR/<release>.zip
 
-Only the six NEW Phase 10 files are deployed. Everything they build on is already live and
+Only the seven NEW Phase 10 files are deployed. Everything they build on is already live and
 listed in phase10-required-unchanged.txt with its pinned SHA-256: the Phase 9 lab modules
 exactly as frozen at a3f9038 (taken from the Phase 9 deploy-files.txt and required-unchanged.txt,
 so te-env.mjs must be the te-env-2 network-audit fix), the Run #10 engine and PDF.js 3.11.174.
+phase8.css, which the Phase 9 lists accept as ANY, is pinned here to its a3f9038 SHA-256 from
+the frozen Phase 9 package manifest (MANIFEST.sha256): Phase 10 loads it, so the deploy must
+prove the live copy is that build. No required file is accepted as ANY.
 The deploy script only reads (hash-checks) those. The Phase 9 package files are not changed."""
 import hashlib
 import os
@@ -24,7 +27,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 APP = os.path.join(ROOT, 'public_html', 'app.noblepdf.com')
 LAB = 'lab/true-text-edit/'
 # Deploy order: modules and scripts first, the page last.
-PHASE10 = ['te-corpus.mjs', 'te-corpus-env.mjs', 'phase10.css', 'phase10-net-guard.js', 'phase10-corpus.js', 'phase10-corpus.html']
+PHASE10 = ['te-corpus.mjs', 'te-corpus-env.mjs', 'phase10.css', 'phase10-favicon.png', 'phase10-net-guard.js', 'phase10-corpus.js', 'phase10-corpus.html']
 # Phase 9 lab files the Phase 10 page loads (pins come from the frozen Phase 9 lists).
 PHASE9_DEPS = ['te-data.mjs', 'te-ttf.mjs', 'te-pdf.mjs', 'te-edit.mjs', 'te-engine.mjs', 'te-pipeline.mjs', 'te-render.mjs', 'te-env.mjs', 'phase9.css',
                'phase8-verify.mjs', 'phase8-csp-guard.js', 'phase8.css']
@@ -42,6 +45,27 @@ def phase9_pins():
             if line.strip():
                 h, rel = line.split()
                 pins[rel] = h
+    # Files the Phase 9 lists accept as ANY get their a3f9038 hash from the frozen Phase 9
+    # package manifest (paths there are relative to the package root).
+    manifest = {}
+    mp = os.path.join(ROOT, 'MANIFEST.sha256')
+    if os.path.isfile(mp) and os.path.isfile(os.path.join(ROOT, 'README-PHASE9-LAB.txt')):
+        for line in open(mp, encoding='ascii'):
+            if line.strip():
+                h, rel = line.split(None, 1)
+                manifest[rel.strip()] = h
+    else:
+        # Inside the Phase 10 package: the committed Phase 10 list already carries the pin.
+        for line in open(os.path.join(ROOT, 'deploy', 'phase10-required-unchanged.txt'), encoding='ascii'):
+            if line.strip():
+                h, rel = line.split()
+                manifest['public_html/app.noblepdf.com/' + rel] = h
+    for rel, h in list(pins.items()):
+        if h == 'ANY':
+            m = manifest.get('public_html/app.noblepdf.com/' + rel)
+            if not m or m == 'ANY':
+                sys.exit(f'{rel}: no a3f9038 hash available to pin it (Phase 10 accepts no ANY)')
+            pins[rel] = m
     return pins
 
 
@@ -58,7 +82,9 @@ def lists():
         if rel not in pins:
             sys.exit(f'{rel} is not pinned by the Phase 9 lists')
         h = pins[rel]
-        if h != 'ANY' and os.path.isfile(os.path.join(APP, rel)) and sha(os.path.join(APP, rel)) != h:
+        if h == 'ANY':
+            sys.exit(f'{rel}: ANY is not accepted')
+        if os.path.isfile(os.path.join(APP, rel)) and sha(os.path.join(APP, rel)) != h:
             sys.exit(f'{rel} in the source tree differs from its Phase 9 pin: Phase 9 files must stay frozen')
         req.append(f'{h} {rel}\n')
     return ''.join(deploy), ''.join(req)

@@ -5,8 +5,9 @@
 #   - --apply writes only under lab/true-text-edit/ (every other file byte-identical);
 #   - rollback --apply restores the whole tree byte- and mode-identical;
 #   - a corrupted package file, a drifted required server file (for example a te-env.mjs older
-#     than the a3f9038 network-audit fix), a missing Phase 9 lab and a backup folder inside
-#     public_html each stop the deploy before anything is written;
+#     than the a3f9038 network-audit fix, or a phase8.css that is not the a3f9038 build), a
+#     missing Phase 9 lab and a backup folder inside public_html each stop the deploy before
+#     anything is written;
 #   - a deploy list or backup list naming a path that escapes lab/true-text-edit/ (.. segment)
 #     is refused before anything is written or removed.
 # The vendor engine pins are relaxed to ANY in the scratch copy only (the real engine bytes
@@ -72,6 +73,10 @@ cp "$A/lab/true-text-edit/phase8-verify.mjs" "$T/keep"
 echo "drift" >> "$A/lab/true-text-edit/phase8-verify.mjs"
 expect_stop "drifted required server file stops the deploy" "differs from its pinned build" sh "$DEPLOY" --apply
 cp "$T/keep" "$A/lab/true-text-edit/phase8-verify.mjs"
+cp "$A/lab/true-text-edit/phase8.css" "$T/keep"
+echo "/* live edit */" >> "$A/lab/true-text-edit/phase8.css"
+expect_stop "a live phase8.css that is not the a3f9038 build stops the deploy (pinned, not ANY)" "differs from its pinned build: lab/true-text-edit/phase8.css" sh "$DEPLOY" --apply
+cp "$T/keep" "$A/lab/true-text-edit/phase8.css"
 mv "$A/lab/true-text-edit/phase9-suite.html" "$T/keep"
 expect_stop "a server without the Phase 9 lab stops the deploy" "Phase 9 lab not deployed" sh "$DEPLOY" --apply
 mv "$T/keep" "$A/lab/true-text-edit/phase9-suite.html"

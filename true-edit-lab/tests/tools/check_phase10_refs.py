@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Pre-deploy checks for the Phase 10 page:
   - every Phase 10 deploy file and required lab file uses an extension the live host serves
-    (the host answers 403 to every *.json URL);
+    (the host answers 403 to every *.json URL; .png is used only by the pinned favicon);
   - every same-origin file the page loads (HTML src/href, and the static import closure of its
     module graph) is either a Phase 10 deploy file or a pinned required file;
-  - that set equals the allowlist in te-corpus-env.mjs (LAB_FILES), so the network ledger
-    neither misses a file the page needs nor allows one it does not load;
+  - the exact URL policy in te-corpus-env.mjs (LAB_QUERIES) lists exactly those files, each
+    with exactly the one query string the page uses for it (no file loaded with two queries,
+    no policy entry the page does not load), so the network ledger neither misses a request
+    the page makes nor accepts a query it does not make;
+  - the engine query policy (?te=patched-<12 hex>) matches what te-engine.mjs builds from the
+    page's label and 6-byte nonce;
   - Phase 10 imports te-env.mjs with the same URL (?v=2) as the frozen Phase 9 pages.
 Usage: python3 tests/tools/check_phase10_refs.py"""
 import os
@@ -14,7 +18,9 @@ import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 LABDIR = os.path.join(ROOT, 'public_html', 'app.noblepdf.com', 'lab', 'true-text-edit')
-SERVED = {'.html', '.js', '.mjs', '.css', '.pdf', '.txt'}
+# .png: the pinned phase10-favicon.png only. Unlike .json/.txt/.pdf it was not probed on the
+# live host on 2026-09-30; README-PHASE10-LAB.txt has a post-deploy check for it.
+SERVED = {'.html', '.js', '.mjs', '.css', '.pdf', '.txt', '.png'}
 bad = []
 
 
@@ -29,43 +35,78 @@ def read_list(name):
 
 deploy = read_list('phase10-deploy-files.txt')
 req = read_list('phase10-required-unchanged.txt')
+for rel, h in list(deploy.items()) + list(req.items()):
+    if h == 'ANY':
+        bad.append(f'{rel}: pinned as ANY (Phase 10 requires an exact SHA-256)')
 for rel in list(deploy) + [r for r in req if r.startswith('lab/')]:
-    if os.path.splitext(rel)[1].lower() not in SERVED:
+    ext = os.path.splitext(rel)[1].lower()
+    if ext not in SERVED:
         bad.append(f'{rel}: extension not served by the live host')
+    if ext == '.png' and rel != 'lab/true-text-edit/phase10-favicon.png':
+        bad.append(f'{rel}: .png is accepted only for the pinned favicon')
 pinned = {r.split('/')[-1] for r in list(deploy) + list(req) if r.startswith('lab/true-text-edit/')}
 html = open(os.path.join(LABDIR, 'phase10-corpus.html'), encoding='ascii').read()
-refs = set()
+used = {}  # file -> set of query strings the page uses for it
+
+
+def use(name, query):
+    used.setdefault(name, set()).add(query or '')
+
+
 for m in re.finditer(r'(?:src|href)="([^"]+)"', html):
     u = m.group(1)
     if u.startswith('/vendor/'):
         if u.lstrip('/') not in req:
             bad.append(f'html loads {u}, which is not pinned')
+        if '?' in u or '#' in u:
+            bad.append(f'html loads {u} with a query or fragment (vendor files carry none)')
         continue
-    refs.add(u.split('?')[0])
-todo = [r for r in refs if r.endswith('.js') or r.endswith('.mjs')]
-seen = set(refs)
-imports_env = set()
+    path, _, q = u.partition('?')
+    use(path, '?' + q if q else '')
+icons = re.findall(r'<link rel="icon"[^>]*href="([^"]+)"', html)
+if icons != ['phase10-favicon.png?v=1']:
+    bad.append(f'the page must declare exactly one icon, phase10-favicon.png?v=1 (found {icons})')
+todo = [f for f in used if f.endswith('.js') or f.endswith('.mjs')]
+env_imports = set()
 while todo:
     f = todo.pop()
     src = open(os.path.join(LABDIR, f), encoding='ascii').read()
     for m in re.finditer(r"(?:import|export)[^'\"]*?from\s+'\./([^'?]+)(\?v=\d+)?'", src):
-        name = m.group(1)
+        name, q = m.group(1), m.group(2) or ''
         if name == 'te-env.mjs':
-            imports_env.add(m.group(2))
-        if name not in seen:
-            seen.add(name)
+            env_imports.add(q)
+        first = name not in used
+        use(name, q)
+        if first:
             todo.append(name)
-for f in sorted(seen):
+for f in sorted(used):
     if f not in pinned:
         bad.append(f'the page loads {f}, which is neither a Phase 10 deploy file nor a pinned required file')
-allow = re.search(r"const LAB_FILES = \[([^\]]*)\]", open(os.path.join(LABDIR, 'te-corpus-env.mjs'), encoding='ascii').read())
-allowed = set(re.findall(r"'([^']+)'", allow.group(1))) if allow else set()
-page_set = seen | {'phase10-corpus.html'}
-if allowed != page_set:
-    bad.append(f'te-corpus-env.mjs LAB_FILES differs from the files the page loads: missing {sorted(page_set - allowed)}, extra {sorted(allowed - page_set)}')
-if imports_env != {'?v=2'}:
-    bad.append(f'te-env.mjs must be imported as ?v=2 (the a3f9038 URL); found {sorted(imports_env)}')
-print(f'{len(deploy)} Phase 10 deploy files, {len(req)} required files; the page loads {len(page_set)} lab files, all pinned; ledger allowlist {"matches" if allowed == page_set else "DIFFERS"}')
+    if len(used[f]) != 1:
+        bad.append(f'{f} is loaded with more than one query {sorted(used[f])}')
+envsrc = open(os.path.join(LABDIR, 'te-corpus-env.mjs'), encoding='ascii').read()
+block = re.search(r"export const LAB_QUERIES = Object\.freeze\(\{([^}]*)\}\);", envsrc)
+policy = dict(re.findall(r"'([^']+)': '([^']*)'", block.group(1))) if block else {}
+actual = {f: next(iter(q)) for f, q in used.items() if len(q) == 1}
+if policy != actual:
+    missing = sorted(set(actual) - set(policy))
+    extra = sorted(set(policy) - set(actual))
+    differ = sorted(f for f in set(policy) & set(actual) if policy[f] != actual[f])
+    bad.append(f'LAB_QUERIES differs from what the page loads: missing {missing}, extra {extra}, different query {differ}')
+for f, q in policy.items():
+    if not re.fullmatch(r'\?v=\d+', q):
+        bad.append(f'LAB_QUERIES {f}: {q!r} is not an exact ?v=N cache version')
+if 'export const ENGINE_QUERY = /^\\?te=patched-[0-9a-f]{12}$/;' not in envsrc:
+    bad.append('ENGINE_QUERY is not exactly /^\\?te=patched-[0-9a-f]{12}$/')
+eng = open(os.path.join(LABDIR, 'te-engine.mjs'), encoding='ascii').read()
+page = open(os.path.join(LABDIR, 'phase10-corpus.js'), encoding='ascii').read()
+if 'const tag = `${label}-${nonce}`;' not in eng or 'pdfium.wasm?te=${tag}' not in eng or 'index.js?te=${tag}' not in eng:
+    bad.append('te-engine.mjs no longer builds engine URLs as ?te=<label>-<nonce>')
+if "label: 'patched'" not in page or 'crypto.getRandomValues(new Uint8Array(6))' not in page or ".toString(16).padStart(2, '0')" not in page:
+    bad.append('phase10-corpus.js no longer loads the engine as label patched with a 6-byte hex nonce')
+if env_imports != {'?v=2'}:
+    bad.append(f'te-env.mjs must be imported as ?v=2 (the a3f9038 URL); found {sorted(env_imports)}')
+print(f'{len(deploy)} Phase 10 deploy files, {len(req)} required files (no ANY); the page loads {len(used)} lab files, each with one exact query, all pinned; URL policy {"matches" if policy == actual else "DIFFERS"}')
 for b in bad:
     print('FAIL', b)
 sys.exit(1 if bad else 0)

@@ -9,7 +9,7 @@ fa59cca2fb2ca8e1ec03e4f4716de882d595bb23c1ee35c3a6562c9e950317de lab/true-text-e
 c9765945abc2d70aece509744b3b2f28d8d789f530e180e23a118c3e7e4e7783 lab/true-text-edit/phase9.css
 67721e5d2862fdaae76c51fadc19951e9922586cdd71d97a8736578f77dc35d5 lab/true-text-edit/phase8-verify.mjs
 8dd27a70889f0bce12c076bb7bbc8073807ffd6a00f6a0f83b01331b12c71a7d lab/true-text-edit/phase8-csp-guard.js
-ANY lab/true-text-edit/phase8.css
+d36798cccf827b2c1fb7a6c510fe3761e2e86a6ceb517eaef779d5cac5ad03a7 lab/true-text-edit/phase8.css
 2af28659a83b5691ed1193bd0819a6a1339036fb08505826d561c7541762baf2 vendor/pdfium-2.15.1-setpositions/index.js
 c4f54bda9bc730c0aeb6579254f0431fa95886478cd19967555be6ea2a35ce11 vendor/pdfium-2.15.1-setpositions/pdfium.wasm
 5b5799e6f8c680663207ac5b42ee14eed2a406fa7af48f50c154f0c0b1566946 vendor/pdfjs-3.11.174/pdf.min.js

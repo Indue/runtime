@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="phase8.css?v=2">
   <link rel="stylesheet" href="phase9.css?v=1">
   <link rel="stylesheet" href="phase10.css?v=1">
+  <link rel="icon" type="image/png" href="phase10-favicon.png?v=1">
   <script src="/vendor/pdfjs-3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"></script>
 </head>
 <body>
@@ -124,11 +125,11 @@
 
   <section class="card">
     <h2>6. Export corpus report</h2>
-    <p class="muted">The export is a JSON diagnostic report for aggregating many PDFs. By default it contains no PDF bytes, no file names, no document text and no reason details (details can quote document text). Hashes, counts, codes, font facts and text-state numbers are always included.</p>
+    <p class="muted">The export is a JSON diagnostic report for aggregating many PDFs. By default it contains no PDF bytes, no file names, no document text, no reason details (details can quote document text) and no raw Producer/Creator strings (only the generator family). Hashes, counts, codes, font facts and text-state numbers are always included.</p>
     <div class="button-row">
       <label class="inline"><input id="optNames" type="checkbox"> Include file names</label>
       <label class="inline">Text samples <select id="optSamples"><option value="none">none (default)</option><option value="redacted">redacted shape only (Aaaa 99)</option><option value="plain">plain, max 24 characters, plus reason details</option></select></label>
-      <label class="inline"><input id="optGen" type="checkbox" checked> Include Producer/Creator strings</label>
+      <label class="inline"><input id="optGen" type="checkbox"> Include raw Producer/Creator strings (the generator family is always included)</label>
     </div>
     <div class="button-row"><button id="export" class="primary" type="button" disabled>Export corpus report (JSON)</button> <button id="copySummary" class="secondary" type="button" disabled>Copy text summary</button></div>
     <div id="exportStatus" class="status-line">-</div>

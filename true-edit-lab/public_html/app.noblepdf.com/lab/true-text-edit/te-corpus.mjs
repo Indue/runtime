@@ -645,9 +645,11 @@ const clip = (t, n) => fromCodePoints(toCodePoints(String(t)).slice(0, n));
 const SAMPLE_LEN = 24;
 
 // Builds the exportable diagnostic report. Defaults leave out file names, object text, reason
-// details (they can quote document text) and never include PDF bytes.
-// options: { includeFileNames = false, samples = 'none' | 'redacted' | 'plain', includeGeneratorStrings = true, environment = null }
-export function buildExport(session, { includeFileNames = false, samples = 'none', includeGeneratorStrings = true, environment = null, page = '' } = {}) {
+// details (they can quote document text) and raw Producer/Creator strings (they can name a
+// person, a file or an organisation; the generator family is always exported), and never
+// include PDF bytes. Every one of them is opt-in.
+// options: { includeFileNames = false, samples = 'none' | 'redacted' | 'plain', includeGeneratorStrings = false, environment = null }
+export function buildExport(session, { includeFileNames = false, samples = 'none', includeGeneratorStrings = false, environment = null, page = '' } = {}) {
   const docs = session.docs.filter((d) => d.report).map((d, i) => docExport(d, i, { includeFileNames, samples, includeGeneratorStrings }));
   return { schema: REPORT_SCHEMA, module: TE_CORPUS_VERSION, page, created: new Date().toISOString(), privacy: { fileNames: includeFileNames, samples, generatorStrings: includeGeneratorStrings, pdfBytes: false, reasonDetails: samples === 'plain' },
     environment, session: sessionSummary(session), documents: docs };

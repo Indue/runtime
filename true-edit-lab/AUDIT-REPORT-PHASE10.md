@@ -56,10 +56,36 @@ selections. The original bytes are never written. Download re-hashes the verifie
   `media-src` and `manifest-src 'none'`.
 - The network guard refuses any request that carries a body, in addition to the CSP.
 - The ledger allowlist equals the exact set of files the page loads (checked in CI).
-- Each processing batch reports its own requests. Expected: pinned files only, 0 bodies.
+- Each processing batch reports its own requests. Expected: pinned URLs (path and exact query) only, 0 bodies.
 - Tests prove it from outside the page: Playwright sees every browser request and the harness
   server logs every request it receives. No scenario may send a body, a non-GET request, PDF
   bytes or a request through another origin.
+
+## Pre-deployment hardening (after 275ed73)
+
+- **Favicon.** Live desktop Chrome requested `/favicon.ico` for the Phase 9 pages, which
+  declare no icon. The Phase 10 page now declares one pinned icon, `phase10-favicon.png?v=1`
+  (16x16, 122 bytes, deployed and hash-checked like every Phase 10 file). The browser therefore
+  asks for that URL, which the policy allows. `/favicon.ico`, other icon versions and other
+  icon files fail the audit (C20).
+- **Exact URL/query policy.** Before, the policy checked origin and path and ignored the query,
+  so `phase10.css?data=...` passed although the query reaches the server. Now every allowed
+  resource has exactly one allowed query:
+  - lab files: the exact `?v=N` the page uses for it;
+  - engine: `?te=patched-<12 lowercase hex>`, the `loadVerifiedEngine` form;
+  - PDF.js: no query.
+  Anything else fails closed, in the fetch/XHR ledger and in Resource Timing alike: extra or
+  unknown keys, other values, fragments, `%PDF` or document text in a query, other paths.
+  `check_phase10_refs.py` proves the policy map equals the queries the page and its module
+  graph really use. C16 now repeats one pinned URL in its exact form. C21 and a Node unit test
+  cover the refusals.
+- **Raw Producer/Creator strings are opt-in.** The export includes the generator family by
+  default. The raw strings (which can name a person, file or organisation) are included only
+  when the checkbox or `includeGeneratorStrings: true` asks for them.
+- **phase8.css pinned.** The Phase 9 lists accept any `phase8.css` (ANY); Phase 10 loads it,
+  so its required list now pins it to the a3f9038 hash `d36798cc...` from the frozen Phase 9
+  manifest. No required file is accepted as ANY. The live hash was never recorded, so if the
+  live copy differs, the dry run stops before any write (tested in `phase10_deploy_test.sh`).
 
 ## Finding: Phase 9 V11 rejects every edit in a multi-page document with text on other pages
 

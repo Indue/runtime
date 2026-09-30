@@ -18,6 +18,7 @@ import { analyze, findTextObject, findInObject } from '../../public_html/app.nob
 import { compareWithReference } from '../../public_html/app.noblepdf.com/lab/true-text-edit/te-suite.mjs?v=1';
 import { toCodePoints, fromCodePoints } from '../../public_html/app.noblepdf.com/lab/true-text-edit/te-edit.mjs?v=1';
 import { sha256Hex, analyzeStructure } from '../../public_html/app.noblepdf.com/lab/true-text-edit/phase8-verify.mjs?v=1';
+import { urlVerdict, LAB_QUERIES } from '../../public_html/app.noblepdf.com/lab/true-text-edit/te-corpus-env.mjs?v=1';
 
 const LAB = new URL('../../public_html/app.noblepdf.com/lab/true-text-edit/', import.meta.url);
 const DIR = new URL('fixtures-phase9/', LAB);
@@ -365,7 +366,7 @@ test('incremental update and cross-reference stream documents are detected and s
 });
 
 // ------------------------------------------------------------------ export and privacy of the report
-test('export: no file names, no document text, no reason details and no PDF bytes by default; redacted and plain samples on request', async () => {
+test('export: no file names, no document text, no reason details, no raw Producer/Creator and no PDF bytes by default; each only on request', async () => {
   const s = new CorpusSession();
   s.beginLoad();
   for (const id of ['invoice-number-longer', 'blocked-signed', 'blocked-tracked-text']) {
@@ -373,13 +374,22 @@ test('export: no file names, no document text, no reason details and no PDF byte
     const d = s.addDocument({ name: `Private Client ${id}.pdf`, bytes: b, sha256: await sha256Hex(b) });
     d.report = await analyzeDocument(E, d.original, { name: d.name, pdfjs });
   }
-  const secrets = ['Invoice Number', 'Jane Citizen', 'Consulting services', 'Tracked heading', 'Private Client', '%PDF'];
+  for (const [name, b] of [['Private Client chrome.pdf', xrefStreamPdf()], ['Private Client word.pdf', multipagePdf()]]) {
+    const d = s.addDocument({ name, bytes: b, sha256: await sha256Hex(b) });
+    d.report = await analyzeDocument(E, d.original, { name, pdfjs, probe: false });
+  }
+  const secrets = ['Invoice Number', 'Jane Citizen', 'Consulting services', 'Tracked heading', 'Private Client', '%PDF', 'Skia/PDF m128', 'Mozilla/5.0', 'for Microsoft 365'];
   const def = JSON.stringify(buildExport(s));
   for (const x of secrets) assert.ok(!def.includes(x), `default export leaks ${x}`);
   const rep = JSON.parse(def);
   assert.equal(rep.schema, 'noblepdf-phase10-corpus-report/1');
-  assert.equal(rep.documents.length, 3);
+  assert.equal(rep.documents.length, 5);
   assert.equal(rep.documents[0].fileName, null);
+  assert.equal(rep.privacy.generatorStrings, false);
+  assert.deepEqual(rep.documents.slice(3).map((x) => x.generator), [{ family: 'Chrome print (Skia)' }, { family: 'Microsoft Word' }], 'generator family exported, raw strings withheld');
+  const gen = buildExport(s, { includeGeneratorStrings: true });
+  assert.deepEqual([gen.documents[3].generator.producer, gen.documents[3].generator.creator], ['Skia/PDF m128', 'Mozilla/5.0 Chrome/128.0.0.0'], 'raw strings only on explicit opt-in');
+  assert.equal(gen.privacy.generatorStrings, true);
   assert.ok(rep.documents[0].sha256.length === 64 && rep.documents[0].objects.length > 0 && rep.documents[0].objects.every((o) => o.sample === undefined && o.details === undefined));
   assert.ok(rep.documents[1].objects.every((o) => o.codes.includes('signed-document')));
   assert.equal(rep.privacy.pdfBytes, false);
@@ -395,6 +405,28 @@ test('export: no file names, no document text, no reason details and no PDF byte
 });
 
 // ------------------------------------------------------------------ units
+test('exact URL policy: pinned path AND its one exact query; everything else fails closed', () => {
+  const P = 'https://app.noblepdf.com/lab/true-text-edit/phase10-corpus.html';
+  const ok = (u) => urlVerdict(u, P).ok;
+  const why = (u) => urlVerdict(u, P).why || '';
+  for (const [f, q] of Object.entries(LAB_QUERIES)) assert.ok(ok(`${f}${q}`), `${f}${q} allowed`);
+  assert.ok(ok('phase10-favicon.png?v=1'));
+  assert.ok(ok('/vendor/pdfium-2.15.1-setpositions/pdfium.wasm?te=patched-0123456789ab') && ok('/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-a1b2c3d4e5f6'));
+  assert.ok(ok('/vendor/pdfjs-3.11.174/pdf.min.js') && ok('/vendor/pdfjs-3.11.174/pdf.worker.min.js'));
+  const refused = [
+    'phase10.css?secret=JaneCitizen', 'phase10.css?data=%25PDF-1.7', 'phase10.css?q=Invoice%20Number%3A%2012345', 'phase10.css?rt=1', 'phase10.css?v=2', 'phase10.css?v=1&x=1',
+    'phase10.css?x=1&v=1', 'phase10.css?v=01', 'phase10.css?V=1', 'phase10.css?v=1&', 'phase10.css', 'phase10.css?v=1#frag', 'te-env.mjs?v=1', 'phase8.css?v=1',
+    '/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-XYZ', '/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-0123456789AB', '/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-0123456789abc',
+    '/vendor/pdfium-2.15.1-setpositions/index.js?te=stock-0123456789ab', '/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-0123456789ab&x=1', '/vendor/pdfium-2.15.1-setpositions/index.js',
+    '/vendor/pdfjs-3.11.174/pdf.min.js?v=1', '/vendor/pdfjs-3.11.174/pdf.worker.min.js?x', '/favicon.ico', 'favicon.ico', 'phase10-favicon.png', 'phase10-favicon.png?v=2', 'other-favicon.png?v=1',
+    'fixtures-phase9/manifest.txt?v=1', 'sub/phase10.css?v=1', '/lab/true-text-edit/../x.css', 'https://example.com/phase10.css?v=1', 'https://user:pw@app.noblepdf.com/lab/true-text-edit/phase10.css?v=1',
+  ];
+  for (const u of refused) assert.equal(ok(u), false, `${u} must be refused`);
+  assert.match(why('phase10.css?secret=JaneCitizen'), /unexpected query/);
+  assert.match(why('/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-XYZ'), /unexpected query .* engine/);
+  assert.match(why('/favicon.ico'), /outside the pinned file list/);
+});
+
 test('diffText is exactly the Phase 9 editor diff (source extracted from phase9-editor.js)', () => {
   const src = readFileSync(new URL('phase9-editor.js', LAB), 'utf8');
   const from = src.indexOf('const isWs = ');

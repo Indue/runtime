@@ -467,32 +467,42 @@ def c14_engine_mismatch(r):
 def c15_export(r):
     r.open()
     r.preflight()
-    r.load([fixture('invoice-number-longer'), fixture('blocked-signed')])
+    r.check(not r.page.is_checked('#optGen') and not r.page.is_checked('#optNames') and r.page.input_value('#optSamples') == 'none', 'export options default to: no raw Producer/Creator, no file names, no samples')
+    r.load([fixture('invoice-number-longer'), fixture('blocked-signed'), synthetic('p10-xref-stream.pdf')])
+    d0 = r.state()['docs'][0]
+    r.show(d0['id'])
     r.click_text('Invoice Number: 12345')
     r.apply('Invoice Number: 31337')
     with r.page.expect_download() as dl:
         r.page.click('#export')
     raw = open(dl.value.path(), 'rb').read()
     rep = json.loads(raw.decode('utf-8'))
-    r.check(rep['schema'] == 'noblepdf-phase10-corpus-report/1' and len(rep['documents']) == 2, 'export schema and document count')
-    leaks = [x for x in ['Invoice Number', 'Jane Citizen', 'Consulting', '31337', 'invoice-number-longer', 'blocked-signed', '%PDF'] if x.encode() in raw]
-    r.check(not leaks, f'default export has no text, no file names, no PDF bytes ({leaks})')
-    d0 = rep['documents'][0]
-    r.check(d0['sha256'] == FX['invoice-number-longer']['sha256']['before'] and d0['summary']['textObjects'] > 0 and d0['editTests'][0]['status'] == 'committed', 'hashes, counts and edit results are exported')
+    r.check(rep['schema'] == 'noblepdf-phase10-corpus-report/1' and len(rep['documents']) == 3, 'export schema and document count')
+    leaks = [x for x in ['Invoice Number', 'Jane Citizen', 'Consulting', '31337', 'invoice-number-longer', 'blocked-signed', 'p10-xref-stream', '%PDF', 'Skia/PDF m128', 'Mozilla/5.0'] if x.encode() in raw]
+    r.check(not leaks, f'default export has no text, no file names, no PDF bytes and no raw Producer/Creator ({leaks})')
+    r.check(rep['privacy']['generatorStrings'] is False and rep['documents'][2]['generator'] == {'family': 'Chrome print (Skia)'}, 'generator family exported by default; raw strings withheld')
+    first = rep['documents'][0]
+    r.check(first['sha256'] == FX['invoice-number-longer']['sha256']['before'] and first['summary']['textObjects'] > 0 and first['editTests'][0]['status'] == 'committed', 'hashes, counts and edit results are exported')
     r.check(rep['environment']['privacyAudit'] is True and rep['environment']['engine']['run10'] is True, 'environment verdicts are exported')
     r.page.select_option('#optSamples', 'redacted')
     with r.page.expect_download() as dl:
         r.page.click('#export')
     red = open(dl.value.path(), 'rb').read()
-    r.check(b'Aaaaaaa Aaaaaa: 99999' in red and b'Invoice Number' not in red, 'redacted samples keep only the text shape')
+    r.check(b'Aaaaaaa Aaaaaa: 99999' in red and b'Invoice Number' not in red and b'Skia/PDF' not in red, 'redacted samples keep only the text shape; still no raw Producer/Creator')
+    r.page.check('#optGen')
+    with r.page.expect_download() as dl:
+        r.page.click('#export')
+    gen = json.loads(open(dl.value.path(), 'rb').read().decode('utf-8'))
+    r.check(gen['privacy']['generatorStrings'] is True and gen['documents'][2]['generator'].get('producer') == 'Skia/PDF m128', 'raw Producer/Creator only after explicit opt-in')
 
 
 def c16_late_request(r):
     r.open()
     r.check(r.preflight() == 'YES', 'ready under the exact Phase 10 CSP')
-    r.ev("async () => { for (let i = 0; i < 300; i++) await (await fetch('./phase10.css?rt=' + i, { cache: 'no-store' })).arrayBuffer(); }")
+    # 300 requests of one pinned URL in its exact allowed form (no cache): completeness, not a query loophole.
+    r.ev("async () => { for (let i = 0; i < 300; i++) await (await fetch('./phase10.css?v=1', { cache: 'no-store' })).arrayBuffer(); }")
     a = r.hook('audit()')
-    r.check(a['pass'] and a['ledger']['entries'] > 300 and a['ledger']['calls'] > 300, f'after 300 extra pinned same-origin requests the ledger sees all of them and passes ({a["ledger"]})')
+    r.check(a['pass'] and a['ledger']['entries'] > 300 and a['ledger']['calls'] > 300, f'after 300 extra requests of a pinned URL in its exact form the ledger sees all of them and passes ({a["ledger"]})')
     late = f'{BASE}/lab/true-text-edit/not-a-pinned-file.txt?late=1'
     r.ev("async (u) => { try { await (await fetch(u, { cache: 'no-store' })).arrayBuffer(); } catch (e) { /* 404 is fine */ } }", late)
     a = r.hook('audit()')
@@ -554,6 +564,64 @@ def c17_upload_refused(r):
     r.check(r.page.is_disabled('#files'), 'file input disabled')
 
 
+IMAGE_JS = "(u) => new Promise((res) => { const i = new Image(); i.onload = () => res('load'); i.onerror = () => res('error'); i.src = u; })"
+
+
+def c20_favicon(r):
+    """The page declares one pinned favicon; loading it the way a browser does keeps the audit
+    at PASS. The implicit /favicon.ico (what live Chrome requested for the Phase 9 pages, which
+    declare no icon) and unpinned icon URLs fail the audit and disable processing."""
+    r.open()
+    icons = r.ev("() => [...document.querySelectorAll('link[rel~=icon]')].map((l) => l.getAttribute('href'))")
+    r.check(icons == ['phase10-favicon.png?v=1'], f'exactly one declared icon, the pinned phase10-favicon.png?v=1 ({icons})')
+    r.check(r.preflight() == 'YES', 'ready')
+    href = r.ev("() => document.querySelector('link[rel~=icon]').href")
+    r.check(r.ev(IMAGE_JS, href) == 'load', 'the declared icon loads (same-origin, allowed by img-src self)')
+    pin = [ln.split()[0] for ln in open(os.path.join(PKG, 'deploy', 'phase10-deploy-files.txt'), encoding='ascii') if ln.strip().endswith('lab/true-text-edit/phase10-favicon.png')]
+    got = r.ev("""async (u) => { const b = new Uint8Array(await (await fetch(u, { cache: 'no-store' })).arrayBuffer()); return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', b)), (x) => x.toString(16).padStart(2, '0')).join(''); }""", href)
+    r.check(pin and got == pin[0], f'the served icon has its pinned SHA-256 ({got[:16]}...)')
+    a = r.hook('audit()')
+    r.check(a['pass'], f'the pinned icon request is allowed by the exact URL policy ({a["fail"][:2]})')
+    r.check(not any(x['url'].endswith('/favicon.ico') for x in r.requests), 'no implicit /favicon.ico request while an icon is declared')
+    for u in ['/favicon.ico', 'phase10-favicon.png?v=2', 'other-favicon.png?v=1']:
+        r.ev(IMAGE_JS, u)
+    a = r.hook('audit()')
+    named = {u: any(u in f for f in a['fail']) for u in ['/favicon.ico', 'phase10-favicon.png?v=2', 'other-favicon.png?v=1']}
+    r.check(not a['pass'] and all(named.values()), f'unpinned icon URLs fail the audit and are named ({named})')
+    r.check(r.page.is_disabled('#files'), 'corpus processing disabled')
+
+
+def c21_query_privacy(r):
+    """A query string can carry data to the server even on an allowed file. Only the exact
+    query of each pinned URL is accepted; anything else fails closed, whether it is seen as a
+    fetch call or only through Resource Timing."""
+    r.open()
+    r.check(r.preflight() == 'YES', 'ready')
+    r.ev("async () => { await (await fetch('./phase10.css?secret=JaneCitizen', { cache: 'no-store' })).arrayBuffer(); }")
+    a = r.hook('audit()')
+    hit = [f for f in a['fail'] if 'secret=JaneCitizen' in f]
+    r.check(not a['pass'] and hit and 'unexpected query' in hit[0], f'phase10.css?secret=JaneCitizen fails the audit as an unexpected query ({hit[:1]})')
+    r.check(r.page.is_disabled('#files') and r.page.inner_text('#privacyStatus').startswith('FAIL'), 'corpus processing disabled')
+    probes = {
+        'fetch %PDF value': './phase10.css?data=%25PDF-1.7',
+        'fetch fixture text': './phase10.css?q=Invoice%20Number%3A%2012345',
+        'fetch extra key': './phase10.css?v=1&x=1',
+        'fetch other version': './phase10.css?v=2',
+        'engine nonce not hex': '/vendor/pdfium-2.15.1-setpositions/index.js?te=patched-NOTHEXNOTHEX',
+        'PDF.js with a query': '/vendor/pdfjs-3.11.174/pdf.min.js?x=1',
+    }
+    for u in probes.values():
+        r.ev("async (u) => { try { await (await fetch(u, { cache: 'no-store' })).arrayBuffer(); } catch (e) { /* 404 is fine */ } }", u)
+    img = 'phase10-favicon.png?leak=Jane%20Citizen'
+    r.ev(IMAGE_JS, img)  # seen only by Resource Timing, not by the fetch/XHR ledger
+    a = r.hook('audit()')
+    missing = [k for k, u in probes.items() if not any(u.lstrip('.') in f for f in a['fail'])]
+    r.check(not missing, f'every query outside the policy is named in the audit (missing: {missing})')
+    r.check(any('leak=Jane%20Citizen' in f and 'unexpected query' in f for f in a['fail']), 'a query seen only through Resource Timing (image load) fails too')
+    srv = [x for x in http_get('/__p10/requests') if 'secret=' in x['query'] or 'leak=' in x['query']]
+    r.check(len(srv) >= 2, f'the harness server did receive those query strings ({len(srv)}): exactly why the policy must refuse them')
+
+
 SCENARIOS = [
     dict(id='C01', run=c01_preflight, note='Preflight: Run #10 identity, API, pinned PDF.js, exact CSP, complete network ledger, no service worker'),
     dict(id='C02', run=c02_local_no_upload, note='Local file path: <input type=file> -> File.arrayBuffer -> analysis; no request with a body; file name never sent'),
@@ -569,11 +637,13 @@ SCENARIOS = [
     dict(id='C12', run=c12_injected_before, note='Script before the CSP meta: fails closed'),
     dict(id='C13', run=c13_service_worker, note='A service worker controlling the page: fails closed'),
     dict(id='C14', run=c14_engine_mismatch, note='Engine bytes that are not Run #10: fails closed'),
-    dict(id='C15', run=c15_export, note='Report export: no text, file names or PDF bytes by default; redacted samples on request'),
-    dict(id='C16', run=c16_late_request, note='Network completeness under the exact CSP: after 300 requests a late request outside the pinned file list still fails the audit'),
+    dict(id='C15', run=c15_export, note='Report export: no text, file names, PDF bytes or raw Producer/Creator by default; redacted samples and raw generator strings only on request'),
+    dict(id='C16', run=c16_late_request, note='Network completeness under the exact CSP: after 300 requests of a pinned URL in its exact form, a late request outside the policy still fails the audit'),
     dict(id='C17', run=c17_upload_refused, note='Upload attempts (POST, PUT, XHR, beacon, WebSocket) are refused in the page and fail the audit'),
     dict(id='C18', run=c18_relaxed_csp, note='A relaxed CSP fails closed at load; a cross-origin load it allowed is named by the audit'),
     dict(id='C19', run=c19_host_files, note='Live-host compatibility: every Phase 10 deploy file and required lab file served with its pin through the emulated host (403 for *.json)'),
+    dict(id='C20', run=c20_favicon, note='Favicon: the declared pinned icon is allowed; /favicon.ico and unpinned icons fail the audit and disable processing'),
+    dict(id='C21', run=c21_query_privacy, note='Query privacy: phase10.css?secret=JaneCitizen, %PDF and fixture-text values, extra keys, wrong versions, bad engine nonces and PDF.js queries all fail closed (fetch and Resource Timing)'),
 ]
 NO_REQUEST_CHECK = {'C16', 'C17', 'C18'}  # these scenarios deliberately make the requests the check forbids
 ALLOW_FOREIGN = {'C12': (f'http://127.0.0.1:{PORT}/__p10/monitor.js',)}  # the injected script before the CSP loads by design

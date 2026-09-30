@@ -40,9 +40,10 @@ What it is
   enabled only while the working copy is the output of a verified commit.
 
   "Export corpus report" writes a JSON report for aggregating many PDFs. By default it holds no
-  PDF bytes, no file names, no document text and no reason details (details can quote text).
-  Options: include file names; text samples redacted to their shape ("Aaaa 99") or plain
-  (max 24 characters, plus reason details); Producer/Creator strings (on by default).
+  PDF bytes, no file names, no document text, no reason details (details can quote text) and
+  no raw Producer/Creator strings; the generator FAMILY (for example "Microsoft Word") is always
+  included. Opt-in options: include file names; text samples redacted to their shape
+  ("Aaaa 99") or plain (max 24 characters, plus reason details); raw Producer/Creator strings.
 
 Privacy and integrity (processing stays disabled unless all pass)
 ------------------------------------------------------------------
@@ -57,22 +58,31 @@ Privacy and integrity (processing stays disabled unless all pass)
     blocked and is reported as a warning), complete Resource Timing, eval blocked, PDF.js
     library and worker pinned by SHA-256 and SRI.
   - A service worker controlling the page FAILS (Phase 9 only warned). Analytics globals FAIL.
-  - Every request since page start must be a GET/HEAD to a pinned same-origin file; the page
-    reports the requests made while processing the chosen PDFs (expected: pinned files only,
-    zero request bodies). The audit reruns before every file and edit and after every batch.
+  - Exact URL policy (te-corpus-env.mjs): every request since page start must be a GET/HEAD to
+    a pinned same-origin file WITH its one exact query: ?v=N for the lab files (exactly the
+    version the page uses), ?te=patched-<12 lowercase hex> for the Run #10 engine, no query for
+    PDF.js. Unknown or extra query keys, other values, fragments and other paths fail closed:
+    a query string reaches the server, so it could carry data. The page reports the requests
+    made while processing the chosen PDFs (expected: pinned URLs only, zero request bodies).
+    The audit reruns before every file and edit and after every batch.
+  - The page declares its own pinned icon (phase10-favicon.png?v=1), so the browser does not
+    request /favicon.ico; /favicon.ico or any other icon URL fails the audit.
 
 Package contents (Phase 10 additions only)
 ------------------------------------------
   public_html/app.noblepdf.com/lab/true-text-edit/
       phase10-corpus.html, phase10-corpus.js, phase10.css      the page
+      phase10-favicon.png                                      pinned 16x16 page icon (122 bytes)
       phase10-net-guard.js                                     early network ledger/upload guard
       te-corpus.mjs                                            document analysis, classification,
                                                                verified edit runner, session, export
       te-corpus-env.mjs                                        strict privacy/integrity audit
   deploy/phase10-lab-deploy.sh, phase10-lab-rollback.sh       dry run by default, --apply
-  deploy/phase10-deploy-files.txt                             the 6 files deployed (SHA-256)
+  deploy/phase10-deploy-files.txt                             the 7 files deployed (SHA-256)
   deploy/phase10-required-unchanged.txt                       16 live files that must match their
                                                               a3f9038 / Run #10 / PDF.js pins
+                                                              (none as ANY: phase8.css is pinned
+                                                              to its a3f9038 build d36798cc...)
   tests/run-phase10.sh, tests/README-PHASE10-TESTS.txt        the Phase 10 test sequence
   .github/workflows/true-edit-phase10-corpus.yml (repository root) CI; builds the package zip
 
@@ -89,14 +99,19 @@ A. Deploy (GoDaddy SSH shell, POSIX sh)
        cd noblepdf-trueedit-phase10-corpus-lab-v1
        sha256sum -c MANIFEST.sha256 | grep -v ': OK$'        (should print nothing)
        sh deploy/phase10-lab-deploy.sh
-     Expected dry run: 6 package files verified; 16 required server files verified or present
-     (te-env.mjs must be the a3f9038 build; if the server still has an older one the script
-     STOPs and changes nothing); plan "new 6, replace 0, unchanged 0". Any STOP: paste it back.
+     Expected dry run: 7 package files verified; 16 required server files verified (te-env.mjs
+     must be the a3f9038 build; phase8.css must be d36798cc...; if a live file differs the
+     script STOPs and changes nothing); plan "new 7, replace 0, unchanged 0". Any STOP: paste
+     it back. Note: Phase 9 accepted any phase8.css (ANY) and never recorded the live hash, so a
+     STOP on phase8.css means the live copy is not the a3f9038 file: compare it before going on.
   3. sh deploy/phase10-lab-deploy.sh --apply
      Expected ending: "DEPLOYED phase10-corpus-lab-v1. Backup: ..." Keep the backup path.
-  4. Optional: the dry run again shows "new 0, replace 0, unchanged 6".
+  4. Optional: the dry run again shows "new 0, replace 0, unchanged 7".
+  5. Icon check (.png was not probed on the live host like .txt/.pdf/.json): open
+     https://app.noblepdf.com/lab/true-text-edit/phase10-favicon.png?v=1 - it must show the
+     small purple icon (not 403/404). If it does not, do not use the page: its audit would fail.
   Rollback: sh deploy/phase10-lab-rollback.sh BACKUP_DIR (dry run), then add --apply. It
-  removes the 6 Phase 10 files; Phase 9 files are never touched by either script.
+  removes the 7 Phase 10 files; Phase 9 files are never touched by either script.
 
 B. Live test (desktop Chrome, fresh tab, hard refresh Ctrl+Shift+R)
 -------------------------------------------------------------------

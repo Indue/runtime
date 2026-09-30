@@ -8,25 +8,55 @@
 //    first two scripts and are intact;
 //  - no request with a body, no method other than GET/HEAD, no refused attempt (beacon,
 //    WebSocket, EventSource, upload), no cross-origin request, and no same-origin request
-//    outside the pinned file list, from page start;
+//    outside the exact URL policy (pinned path AND its one allowed query), from page start;
 //  - no service worker controls the page (Phase 9 only warns);
 //  - no analytics global exists.
 // Browser only. ASCII only.
 import { environmentAudit } from './te-env.mjs?v=2';
 import { PDFJS_PIN } from './te-render.mjs?v=1';
 
-export const TE_CORPUS_ENV_VERSION = 'te-corpus-env-1';
+export const TE_CORPUS_ENV_VERSION = 'te-corpus-env-2';
 export const PHASE10_CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; media-src 'none'; manifest-src 'none'";
 export const PAGE_SCRIPTS = Object.freeze(['phase8-csp-guard.js', 'phase10-net-guard.js', 'phase10-corpus.js']);
 export const ENGINE_BASE = '/vendor/pdfium-2.15.1-setpositions/';
-const LAB_FILES = ['phase10-corpus.html', 'phase10-corpus.js', 'phase10-net-guard.js', 'phase10.css', 'phase8-csp-guard.js', 'phase8.css', 'phase9.css', 'phase8-verify.mjs',
-  'te-data.mjs', 'te-ttf.mjs', 'te-pdf.mjs', 'te-edit.mjs', 'te-engine.mjs', 'te-pipeline.mjs', 'te-render.mjs', 'te-env.mjs', 'te-corpus.mjs', 'te-corpus-env.mjs'];
+// Exact URL policy: every same-origin resource the page may request, each with the ONE query
+// string it is requested with. The lab files carry the exact cache-version query that the page
+// and its module graph use (tests/tools/check_phase10_refs.py proves this map equals those
+// references); the engine files carry "?te=patched-<12 lowercase hex>" as produced by
+// loadVerifiedEngine() with the page's 6-byte nonce; PDF.js files carry no query. Anything
+// else fails: unknown or extra query keys, other values, a fragment, other paths. A query can
+// carry data to the server, so no value outside this policy is accepted.
+export const LAB_QUERIES = Object.freeze({
+  'phase8-csp-guard.js': '?v=1', 'phase10-net-guard.js': '?v=1', 'phase8.css': '?v=2', 'phase9.css': '?v=1', 'phase10.css': '?v=1', 'phase10-favicon.png': '?v=1', 'phase10-corpus.js': '?v=1',
+  'te-engine.mjs': '?v=1', 'te-render.mjs': '?v=1', 'phase8-verify.mjs': '?v=1', 'te-corpus.mjs': '?v=1', 'te-corpus-env.mjs': '?v=1', 'te-env.mjs': '?v=2',
+  'te-pipeline.mjs': '?v=1', 'te-edit.mjs': '?v=1', 'te-pdf.mjs': '?v=1', 'te-data.mjs': '?v=1', 'te-ttf.mjs': '?v=1',
+});
+export const ENGINE_QUERY = /^\?te=patched-[0-9a-f]{12}$/;
 const ANALYTICS_GLOBALS = ['ga', 'gtag', '_gaq', 'dataLayer', 'fbq', '_fbq', '_paq', 'mixpanel', 'amplitude', 'heap', 'hj', '_hjSettings', '__insp', 'clarity', '_trfq', '_trfd', 'tccl', '_tccl', 'wsb', '_wsb', 'Sentry', 'newrelic', 'NREUM', 'analytics'];
 const HOST_MONITOR = /wsimg\.com|tccl|godaddy|secureserver|traffic-?cop/i;
 
-export function allowedPaths() {
-  const dir = new URL('./', location.href).pathname;
-  return new Set([...LAB_FILES.map((f) => dir + f), `${ENGINE_BASE}index.js`, `${ENGINE_BASE}pdfium.wasm`, PDFJS_PIN.lib, PDFJS_PIN.worker]);
+// Pure (no window access) so Node tests can exercise it. pageHref is the corpus page URL.
+export function urlVerdict(url, pageHref, pdfjsPaths = [PDFJS_PIN.lib, PDFJS_PIN.worker]) {
+  let u;
+  let page;
+  try { page = new URL(pageHref); u = new URL(url, pageHref); } catch (e) { return { ok: false, why: 'invalid URL' }; }
+  if (u.origin !== page.origin) return { ok: false, why: `cross-origin (${u.origin})`, cross: true };
+  if (u.username || u.password) return { ok: false, why: 'credentials in the URL' };
+  if (u.hash) return { ok: false, why: `unexpected fragment ${JSON.stringify(u.hash.slice(0, 40))}` };
+  const dir = new URL('./', page).pathname;
+  const q = u.search;
+  const show = JSON.stringify(q.slice(0, 60));
+  if (u.pathname.startsWith(dir) && u.pathname.indexOf('/', dir.length) === -1) {
+    const file = u.pathname.slice(dir.length);
+    if (Object.prototype.hasOwnProperty.call(LAB_QUERIES, file)) {
+      return q === LAB_QUERIES[file] ? { ok: true } : { ok: false, why: `unexpected query ${show} on ${file} (only ${LAB_QUERIES[file]} is allowed)` };
+    }
+  }
+  if (u.pathname === `${ENGINE_BASE}index.js` || u.pathname === `${ENGINE_BASE}pdfium.wasm`) {
+    return ENGINE_QUERY.test(q) ? { ok: true } : { ok: false, why: `unexpected query ${show} on the engine (only ?te=patched-<12 hex> is allowed)` };
+  }
+  if (pdfjsPaths.includes(u.pathname)) return q === '' ? { ok: true } : { ok: false, why: `unexpected query ${show} on PDF.js (no query is allowed)` };
+  return { ok: false, why: `same-origin path outside the pinned file list (${u.pathname})` };
 }
 
 // A cross-origin Resource Timing entry counts as a blocked attempt (not a load) only when the
@@ -40,13 +70,7 @@ function blockedByCsp(url) {
   });
 }
 
-function classify(url, allowed) {
-  let u;
-  try { u = new URL(url, location.href); } catch (e) { return { ok: false, why: 'invalid URL' }; }
-  if (u.origin !== location.origin) return { ok: false, why: `cross-origin (${u.origin})`, cross: true };
-  if (!allowed.has(u.pathname)) return { ok: false, why: `same-origin path outside the pinned file list (${u.pathname})` };
-  return { ok: true };
-}
+const classify = (url) => urlVerdict(url, location.href);
 
 // Position in the network ledger; requestsSince(mark) lists what happened after it.
 export function ledgerMark() {
@@ -56,7 +80,6 @@ export function ledgerMark() {
 
 export function requestsSince(mark) {
   const n = window.__phase10Net;
-  const allowed = allowedPaths();
   if (!n) return { calls: [], entries: [], bad: ['network ledger missing'], blocked: [] };
   const calls = n.calls().slice(mark.calls);
   const entries = n.entries().slice(mark.entries);
@@ -65,10 +88,10 @@ export function requestsSince(mark) {
   for (const c of calls) {
     if (c.refused) bad.push(`refused ${c.kind} ${c.method} ${c.url}: ${c.refused}`);
     else if (c.body || (c.method !== 'GET' && c.method !== 'HEAD')) bad.push(`${c.kind} ${c.method} with body ${c.body} to ${c.url}`);
-    else { const k = classify(c.url, allowed); if (!k.ok) bad.push(`${c.kind} ${c.url}: ${k.why}`); }
+    else { const k = classify(c.url); if (!k.ok) bad.push(`${c.kind} ${c.url}: ${k.why}`); }
   }
   for (const e of entries) {
-    const k = classify(e.name, allowed);
+    const k = classify(e.name);
     if (k.ok) continue;
     if (k.cross && blockedByCsp(e.name)) blocked.push(e.name);
     else bad.push(`${e.type || 'resource'} ${e.name}: ${k.why}`);
