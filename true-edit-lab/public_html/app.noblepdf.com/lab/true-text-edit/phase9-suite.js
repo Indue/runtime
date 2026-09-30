@@ -6,7 +6,8 @@ import { environmentAudit } from './te-env.mjs?v=1';
 import { sha256Hex } from './phase8-verify.mjs?v=1';
 
 const PAGE_VERSION = 'phase9-suite-1';
-const MANIFEST = Object.freeze({ url: './fixtures-phase9/manifest.json?v=1', sha256: '9026394f2c900433e7e199ce943e509554311c324a34bea0b0fbfcb2e968eeee' });
+// The fixture manifest is JSON served as .txt: the live host answers 403 to every *.json URL.
+const MANIFEST = Object.freeze({ url: './fixtures-phase9/manifest.txt?v=1', sha256: '9026394f2c900433e7e199ce943e509554311c324a34bea0b0fbfcb2e968eeee' });
 const PATCHED_BASE = '/vendor/pdfium-2.15.1-setpositions/';
 const CONTROL_FIXTURE = 'invoice-number-longer';
 const $ = (id) => document.getElementById(id);

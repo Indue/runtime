@@ -44,7 +44,7 @@ def sha(p):
 
 def deploy_files():
     fx = sorted(os.listdir(os.path.join(APP, LAB, 'fixtures-phase9')))
-    fx = [f for f in fx if f != 'manifest.json'] + ['manifest.json']
+    fx = [f for f in fx if f != 'manifest.txt'] + ['manifest.txt']
     rels = [LAB + 'fixtures-phase9/' + f for f in fx] + [LAB + m for m in MODULES] + [LAB + s for s in SCRIPTS] + [LAB + h for h in HTML]
     for r in rels:
         if not os.path.isfile(os.path.join(APP, r)):

@@ -702,5 +702,6 @@ for fid, repl, code in [('input-empty', '', 'empty-replacement'), ('input-combin
 for f in manifest['fixtures']:
     f['sha256'] = {k: written[f[k]] for k in ('before', 'reference') if k in f}
 manifest['fixtures'].sort(key=lambda f: (f['expect']['status'] != 'committed', f['id']))
-open(os.path.join(OUT, 'manifest.json'), 'w').write(json.dumps(manifest, indent=1, ensure_ascii=True))
+# .txt, not .json: the live host answers 403 to every *.json URL.
+open(os.path.join(OUT, 'manifest.txt'), 'w').write(json.dumps(manifest, indent=1, ensure_ascii=True))
 print('fixtures', len(manifest['fixtures']), 'files', len(written), 'bytes', sum(os.path.getsize(os.path.join(OUT, n)) for n in written))

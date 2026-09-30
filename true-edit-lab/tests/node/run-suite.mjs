@@ -7,7 +7,7 @@ import { pdfjsProvider } from './lib/pdfjs-node.mjs';
 import { runFixture, discriminationLabel } from '../../public_html/app.noblepdf.com/lab/true-text-edit/te-suite.mjs';
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const DIR = new URL('../../public_html/app.noblepdf.com/lab/true-text-edit/fixtures-phase9/', import.meta.url);
-const manifest = JSON.parse(readFileSync(new URL('manifest.json', DIR)));
+const manifest = JSON.parse(readFileSync(new URL('manifest.txt', DIR)));
 const only = arg('--only', '') ? arg('--only', '').split(',') : null;
 const E = await loadEngine('patched');
 const pdfjs = await pdfjsProvider(Number(arg('--pdfjs', '3')));

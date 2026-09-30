@@ -14,7 +14,7 @@ Contents
       phase9-suite.html/.js             Phase 9 fixture suite page (new)
       phase9-editor.html/.js            Phase 9 interactive editor (new)
       phase9.css, te-*.mjs              Phase 9 modules (new)
-      fixtures-phase9/                  47 fixtures + manifest.json (new)
+      fixtures-phase9/                  47 fixtures + manifest.txt (new)
       phase8-verify.mjs, phase8-csp-guard.js, phase8-layout.mjs, phase8.css, fixtures-phase8/
                                         ALREADY LIVE: shipped for tests only, NOT deployed; the
                                         deploy script verifies the live copies by SHA-256

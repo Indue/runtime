@@ -14,7 +14,7 @@ import { scanPdf, latin1 } from '../../public_html/app.noblepdf.com/lab/true-tex
 import { OBJ } from '../../public_html/app.noblepdf.com/lab/true-text-edit/te-engine.mjs';
 
 const DIR = new URL('../../public_html/app.noblepdf.com/lab/true-text-edit/fixtures-phase9/', import.meta.url);
-const manifest = JSON.parse(readFileSync(new URL('manifest.json', DIR)));
+const manifest = JSON.parse(readFileSync(new URL('manifest.txt', DIR)));
 const load = async (n) => new Uint8Array(readFileSync(new URL(n, DIR)));
 const E = await loadEngine('patched');
 const pdfjs = await pdfjsProvider(3);

@@ -26,13 +26,21 @@ What each step proves
                            the gap policy must sit inside every measured interval; shows that the
                            old fixed limits were unsafe.
   fixture-manifest         fixture hashes and the manifest pin in the pages.
+  host-compat              every deployed file uses an extension the live host serves (the host
+                           answers 403 to every *.json URL); the manifest URL pinned in the
+                           suite and editor pages is deployed with that pin.
   deploy-rollback          deploy and rollback scripts against a throwaway app root: writes stay
                            under lab/true-text-edit/, .. paths and tampered backup lists are
                            refused, rollback restores the tree byte- and mode-identical.
   v2-harness-matrix        V2.1.1 page in Chromium (fake engines, injection, real engine H23,
                            unpinned stock H24). V1 scenarios run only when V1_LAB_DIR is set.
-  phase9-browser           Phase 9 suite page (S01..S06) and editor (E01..E06) in Chromium with
-                           the real engine, including host-style script injection.
+  phase9-browser           Phase 9 suite page (S01..S08) and editor (E01..E08) in Chromium with
+                           the real engine, including host-style script injection, a tampered
+                           manifest (S07, E07) and a tampered fixture PDF (S08, E08). S01 also
+                           requires 22 committed, 25 failed closed and the SetPositions-disabled
+                           control rejected. H01 fetches, from the page, the exact manifest URL
+                           of both pages and all deploy-files.txt entries through the harness
+                           server, which imitates the live host (403 for every *.json URL).
   ascii-check              every text file in the package is ASCII (no em dash).
 
 Fixtures

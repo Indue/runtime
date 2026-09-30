@@ -9,7 +9,7 @@ import re
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 RES = os.path.join(ROOT, 'tests', 'results')
 LAB = os.path.join(ROOT, 'public_html', 'app.noblepdf.com', 'lab', 'true-text-edit')
-manifest = json.load(open(os.path.join(LAB, 'fixtures-phase9', 'manifest.json')))
+manifest = json.load(open(os.path.join(LAB, 'fixtures-phase9', 'manifest.txt')))
 load = lambda n: json.load(open(os.path.join(RES, n)))
 suites = {v: {r['id']: r for r in load(f'node-suite-pdfjs{v}.json')['rows']} for v in (3, 4, 6)}
 browser = {r['id']: r for r in load('phase9-browser-results.json')}
@@ -79,7 +79,7 @@ def browser_table():
 tpl = open(os.path.join(ROOT, 'AUDIT-REPORT-PHASE9.template.md'), encoding='ascii').read()
 for key, fn in (('SUPPORTED', supported), ('BLOCKED', blocked), ('FAULTS', faults), ('THRESHOLDS', thresholds), ('BROWSER', browser_table)):
     tpl = tpl.replace(f'@@{key}@@', fn())
-tpl = tpl.replace('@@MANIFEST_SHA@@', __import__('hashlib').sha256(open(os.path.join(LAB, 'fixtures-phase9', 'manifest.json'), 'rb').read()).hexdigest())
+tpl = tpl.replace('@@MANIFEST_SHA@@', __import__('hashlib').sha256(open(os.path.join(LAB, 'fixtures-phase9', 'manifest.txt'), 'rb').read()).hexdigest())
 out = tpl.encode('ascii', 'backslashreplace').decode('ascii')
 open(os.path.join(ROOT, 'AUDIT-REPORT-PHASE9.md'), 'w', encoding='ascii', newline='\n').write(out)
 print('wrote AUDIT-REPORT-PHASE9.md', len(out), 'chars')

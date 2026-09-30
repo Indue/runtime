@@ -50,7 +50,14 @@ function fakeWasm() {
 }
 const FAKE_WASM = fakeWasm();
 
-const scenario = { engine: 'emulated', subst: '0', inject: 'none', pdfjs: 'ok', stock: 'pinned' };
+const scenario = { engine: 'emulated', subst: '0', inject: 'none', pdfjs: 'ok', stock: 'pinned', host: 'live', tamper: 'none' };
+// host=live imitates the measured app.noblepdf.com (GoDaddy Apache) rule: every URL whose
+// path ends in .json is answered 403 before the filesystem is consulted, whether or not the
+// file exists (probe 2026-09-30: does-not-exist.json 403, does-not-exist.txt/.pdf/.bin 404).
+// host=plain serves every file. tamper=manifest flips one byte of fixtures-phase9/manifest.txt;
+// tamper=<file name> flips one byte of that fixtures-phase9 file. Harness only.
+const LIVE_HOST_FORBIDDEN = /\.json$/i;
+function tampered(buf) { const b = Buffer.from(buf); const i = b.length >> 1; b[i] ^= 0x01; return b; }
 const fakeIndex = () => Buffer.from(template.replaceAll('__VARIANT__', scenario.engine));
 const info = () => ({
   scenario, fakeWasmSha256: sha(FAKE_WASM), fakeWasmBytes: FAKE_WASM.length, fakeIndexSha256: sha(fakeIndex()),
@@ -93,6 +100,7 @@ const server = http.createServer((req, res) => {
     if (p === '/vendor/pdfium-2.15.1-setpositions/pdfium.wasm') { if (scenario.engine === 'real') { if (!realWasm) return send(res, 404, 'REAL_PATCHED_DIR not set', 'text/plain'); return send(res, 200, realWasm, TYPES['.wasm']); } return send(res, 200, FAKE_WASM, TYPES['.wasm']); }
     if (p === '/vendor/pdfjs-3.11.174/pdf.min.js') return send(res, 200, pdfjsFile('pdf.min.js'), TYPES['.js']);
     if (p === '/vendor/pdfjs-3.11.174/pdf.worker.min.js') return send(res, 200, pdfjsFile('pdf.worker.min.js'), TYPES['.js']);
+    if (scenario.host === 'live' && LIVE_HOST_FORBIDDEN.test(p)) return send(res, 403, Buffer.from('403 Forbidden'), 'text/html; charset=iso-8859-1');
     const LAB = '/lab/true-text-edit/';
     if (p.startsWith(LAB) && !p.includes('..')) {
       const rel = p.slice(LAB.length);
@@ -102,6 +110,7 @@ const server = http.createServer((req, res) => {
           let body = readFileSync(f);
           const ext = path.extname(f);
           if (ext === '.html') body = injectHtml(body);
+          if (scenario.tamper !== 'none' && rel === `fixtures-phase9/${scenario.tamper === 'manifest' ? 'manifest.txt' : scenario.tamper}`) body = tampered(body);
           if (rel === 'phase8-v2.js' && scenario.subst === '1') {
             // Harness-only substitution of the two pinned Run #10 hashes by the fake engine's hashes.
             const s = body.toString('utf8');

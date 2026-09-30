@@ -14,6 +14,7 @@ Writes tests/results/phase9-browser-results.json and .txt.
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -29,8 +30,22 @@ PORT = int(os.environ.get('PORT', '8792'))
 BASE = f'http://localhost:{PORT}'
 SUITE = '/lab/true-text-edit/phase9-suite.html'
 EDITOR = '/lab/true-text-edit/phase9-editor.html'
-MANIFEST = json.load(open(os.path.join(PKG, 'public_html', 'app.noblepdf.com', 'lab', 'true-text-edit', 'fixtures-phase9', 'manifest.json'), encoding='utf-8'))
+LAB_DIR = os.path.join(PKG, 'public_html', 'app.noblepdf.com', 'lab', 'true-text-edit')
+MANIFEST_BYTES = open(os.path.join(LAB_DIR, 'fixtures-phase9', 'manifest.txt'), 'rb').read()
+MANIFEST = json.loads(MANIFEST_BYTES.decode('utf-8'))
 FX = {f['id']: f for f in MANIFEST['fixtures']}
+N_COMMITTED = sum(1 for f in MANIFEST['fixtures'] if f['expect']['status'] == 'committed')
+N_FAILED_CLOSED = len(MANIFEST['fixtures']) - N_COMMITTED
+# The manifest URL and pin exactly as the deployed pages will request them.
+PAGE_PINS = {}
+for _page in ('phase9-suite.js', 'phase9-editor.js'):
+    _m = re.search(r"const MANIFEST = Object\.freeze\(\{ url: '([^']+)', sha256: '([0-9a-f]{64})' \}\);", open(os.path.join(LAB_DIR, _page), encoding='ascii').read())
+    if not _m:
+        raise SystemExit(f'manifest pin line not found in {_page}')
+    PAGE_PINS[_page] = (_m.group(1), _m.group(2))
+DEPLOY_FILES = [line.split(' ', 1) for line in open(os.path.join(PKG, 'deploy', 'deploy-files.txt'), encoding='ascii').read().splitlines() if line.strip()]
+TAMPERED_FIXTURE = 'euro-winansi'  # not the live control fixture
+MANIFEST_SHA = hashlib.sha256(MANIFEST_BYTES).hexdigest()
 
 
 def http_get(path):
@@ -52,8 +67,9 @@ def start_server():
     raise RuntimeError('harness server did not start')
 
 
-def configure(engine='real', inject='none', pdfjs='ok'):
-    return http_get('/__harness/scenario?' + urllib.parse.urlencode(dict(engine=engine, subst='0', inject=inject, pdfjs=pdfjs, stock='pinned')))
+def configure(engine='real', inject='none', pdfjs='ok', tamper='none'):
+    # host=live: the harness server answers 403 to every *.json URL, as app.noblepdf.com does.
+    return http_get('/__harness/scenario?' + urllib.parse.urlencode(dict(engine=engine, subst='0', inject=inject, pdfjs=pdfjs, stock='pinned', host='live', tamper=tamper)))
 
 
 def new_page(browser, out):
@@ -67,7 +83,7 @@ def new_page(browser, out):
 
 # ------------------------------------------------------------------ suite page
 def suite_scenario(browser, sc):
-    configure(sc.get('engine', 'real'), sc.get('inject', 'none'), sc.get('pdfjs', 'ok'))
+    configure(sc.get('engine', 'real'), sc.get('inject', 'none'), sc.get('pdfjs', 'ok'), sc.get('tamper', 'none'))
     out = dict(id=sc['id'], note=sc['note'])
     ctx, page = new_page(browser, out)
     t0 = time.time()
@@ -80,11 +96,14 @@ def suite_scenario(browser, sc):
     out['identity'] = page.inner_text('#identityStatus').strip()
     out['privacy'] = page.inner_text('#privacyStatus').strip()
     out['preflight'] = page.inner_text('#preflightReport')
+    out['fixtures'] = page.inner_text('#fixtureStatus').strip()
     if out['ready'] == 'YES' and sc.get('run_suite'):
         page.click('#runSuite')
         page.wait_for_function("() => !!document.documentElement.dataset.suiteResult", timeout=900000)
         out['suite_result'] = page.evaluate("() => document.documentElement.dataset.suiteResult")
         out['matched'] = page.inner_text('#matchedStatus').strip()
+        out['committed'] = page.inner_text('#committedStatus').strip()
+        out['failed_closed'] = page.inner_text('#blockedStatus').strip()
         out['decision'] = page.inner_text('#decisionStatus').strip()
         out['report'] = page.inner_text('#suiteReport')
     out['network'] = page.inner_text('#networkResults')
@@ -100,17 +119,78 @@ def suite_scenario(browser, sc):
         probs.append(f"expected at least {exp['min_warn']} WARN lines")
     if exp.get('fail_contains') and exp['fail_contains'] not in out['network'] + out['preflight']:
         probs.append(f"expected failure text {exp['fail_contains']!r}")
+    if 'fixtures' in exp and out['fixtures'] != exp['fixtures']:
+        probs.append(f"fixture status {out['fixtures']!r} expected {exp['fixtures']!r}")
+    if exp['ready'] == 'YES' and f"Manifest {MANIFEST_SHA} (pinned)" not in out['preflight']:
+        probs.append('preflight did not load and hash-verify the pinned manifest')
     if sc.get('run_suite') and exp['ready'] == 'YES':
         if out.get('suite_result') != exp['suite_result']:
             probs.append(f"suite result {out.get('suite_result')} expected {exp['suite_result']}")
         want = f"{len(MANIFEST['fixtures'])}/{len(MANIFEST['fixtures'])}"
-        if exp['suite_result'] == 'pass' and out.get('matched') != want:
-            probs.append(f"matched {out.get('matched')} expected {want}")
+        if exp['suite_result'] == 'pass':
+            if out.get('matched') != want:
+                probs.append(f"matched {out.get('matched')} expected {want}")
+            if out.get('committed') != str(N_COMMITTED) or out.get('failed_closed') != str(N_FAILED_CLOSED):
+                probs.append(f"committed {out.get('committed')} / failed closed {out.get('failed_closed')}, expected {N_COMMITTED} / {N_FAILED_CLOSED}")
+            if 'live discrimination control PASS (rejected)' not in out.get('report', ''):
+                probs.append('the SetPositions-disabled live control was not rejected')
+        if exp.get('failing_fixture'):
+            fails = [x for x in out.get('report', '').splitlines() if x.startswith('FAIL  ')]
+            want_bad = f"{len(MANIFEST['fixtures']) - 1}/{len(MANIFEST['fixtures'])}"
+            if out.get('matched') != want_bad or len(fails) != 1 or not fails[0].startswith(f"FAIL  {exp['failing_fixture']} ") or ' observed error ' not in fails[0]:
+                probs.append(f"expected only {exp['failing_fixture']} to fail (hash check, status error) (matched {out.get('matched')}): {fails[:2]}")
     errs = [c for c in out['console'] if c.startswith('pageerror') or c.startswith('error')]
     if sc.get('inject', 'none') != 'none':  # the browser logs each CSP refusal of an injected script
         errs = [c for c in errs if not c.startswith('error: Refused to')]
     if errs and not exp.get('allow_console_errors'):
         probs.append('console errors: ' + ' | '.join(errs[:3]))
+    out['problems'] = probs
+    return out
+
+
+# ------------------------------------------------------------------ live-host compatibility
+FETCH_JS = """async (urls) => {
+  const out = [];
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { cache: 'no-store', credentials: 'same-origin', redirect: 'error' });
+      const b = new Uint8Array(await r.arrayBuffer());
+      const h = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', b)), (x) => x.toString(16).padStart(2, '0')).join('');
+      out.push({ u, status: r.status, sha: h });
+    } catch (e) { out.push({ u, status: 0, sha: String(e) }); }
+  }
+  return out;
+}"""
+
+
+def host_scenario(browser, sc):
+    """Fetches, from the lab page itself and through the emulated live host, the exact manifest
+    URL written in both pages and every file in deploy-files.txt. Any deployed asset the live
+    host would refuse (for example a .json file) fails here, before a deploy."""
+    configure('real')
+    out = dict(id=sc['id'], note=sc['note'], steps=[])
+    probs = []
+
+    def check(cond, what):
+        out['steps'].append(('OK   ' if cond else 'FAIL ') + what)
+        if not cond:
+            probs.append(what)
+
+    ctx, page = new_page(browser, out)
+    t0 = time.time()
+    page.goto(BASE + SUITE, wait_until='load')
+    urls = sorted({u for u, _ in PAGE_PINS.values()})
+    check(len(urls) == 1 and len({p for _, p in PAGE_PINS.values()}) == 1, f'suite and editor use one manifest URL and pin {sorted(PAGE_PINS.values())}')
+    got = page.evaluate(FETCH_JS, urls + ['./fixtures-phase9/manifest.json?v=1'])
+    for g in got[:-1]:
+        check(g['status'] == 200 and g['sha'] == MANIFEST_SHA, f"page manifest URL {g['u']} -> HTTP {g['status']}, sha {g['sha'][:16]} (pin {MANIFEST_SHA[:16]})")
+    check(got[-1]['status'] == 403, f"the old .json path is refused by the emulated live host (HTTP {got[-1]['status']})")
+    rels = [r for _, r in DEPLOY_FILES]
+    got = page.evaluate(FETCH_JS, ['/' + r for r in rels])
+    bad = [f"{g['u']} HTTP {g['status']}" for g, (want, _) in zip(got, DEPLOY_FILES) if g['status'] != 200 or g['sha'] != want]
+    check(not bad and len(got) == len(DEPLOY_FILES), f'all {len(DEPLOY_FILES)} deploy-files.txt entries served with their pinned SHA-256 through the emulated live host' + (f': {bad[:5]}' if bad else ''))
+    ctx.close()
+    out['seconds'] = round(time.time() - t0, 1)
     out['problems'] = probs
     return out
 
@@ -146,7 +226,7 @@ def sha(b):
 
 
 def editor_scenario(browser, sc):
-    configure('real', sc.get('inject', 'none'))
+    configure('real', sc.get('inject', 'none'), tamper=sc.get('tamper', 'none'))
     out = dict(id=sc['id'], note=sc['note'], steps=[])
     ctx, page = new_page(browser, out)
     probs = []
@@ -162,8 +242,13 @@ def editor_scenario(browser, sc):
     page.click('#start')
     page.wait_for_function("() => { const t = document.getElementById('engineStatus').textContent; return t.startsWith('Run #10') || t.startsWith('Blocked'); }", timeout=120000)
     status = page.inner_text('#engineStatus')
-    check(status.startswith('Run #10 engine verified'), f'engine verified ({status[:70]})')
     kind = sc['kind']
+    if kind == 'manifest-tampered':
+        check(status.startswith('Blocked') and 'fixture manifest does not match its pin' in status, f'tampered manifest refused at startup ({status[:90]})')
+        check(page.is_disabled('#fixture'), 'no fixture can be opened')
+        status = ''
+    else:
+        check(status.startswith('Run #10 engine verified'), f'engine verified ({status[:70]})')
     if status.startswith('Run #10') and kind == 'edit-cycle':
         fx = FX['invoice-number-longer']
         obj = fx['edit']['object']
@@ -251,6 +336,17 @@ def editor_scenario(browser, sc):
         page.wait_for_timeout(300)
         check('No text there' in page.inner_text('#hint'), 'click on empty page area selects nothing')
         check(page.is_disabled('#apply'), 'apply disabled without a selection')
+    elif status.startswith('Run #10') and kind == 'fixture-tampered':
+        fid = sc['fixture']
+        page.select_option('#fixture', fid)
+        page.wait_for_function("() => document.getElementById('result').textContent.startsWith('Could not load') || document.getElementById('result').textContent.startsWith('Loaded')", timeout=120000)
+        res = page.inner_text('#result')
+        check(res.startswith('Could not load') and 'do not match the manifest' in res, f'{fid}: tampered fixture refused ({res[:90]})')
+        check(not page.inner_text('#docStatus').startswith(fid + ':'), f'{fid}: no working document was created from the tampered bytes')
+        check(page.is_disabled('#apply'), f'{fid}: apply stays disabled')
+        check(page.evaluate("() => window.__phase9Editor.state().workingLength") == 0, f'{fid}: no working bytes held')
+    elif kind == 'manifest-tampered':
+        pass
     elif kind == 'env-fail':
         check(True, 'n/a')
     out['privacy'] = page.inner_text('#privacyStatus')
@@ -280,6 +376,11 @@ SCENARIOS = [
     dict(id='E04', page='editor', kind='rejected', note='Editor: an edit that verification rejects never replaces the working document'),
     dict(id='E05', page='editor', kind='miss', note='Editor: a click on empty space selects nothing'),
     dict(id='E06', page='editor', kind='suggest-commit', inject='after', fixtures=['invoice-number-longer', 'ttf-custom-encoding'], note='Editor with host-style scripts injected after the CSP meta: blocked as warnings, editing still verified'),
+    dict(id='H01', page='host', note='Live-host compatibility: the exact manifest URL of both pages and every deployed file load with their pins through the emulated host (403 for every *.json URL); the old manifest.json path is refused'),
+    dict(id='S07', page='suite', tamper='manifest', note='Tampered fixture manifest (one byte): preflight must fail closed', expect=dict(ready='NO', privacy='PASS', fixtures='MISMATCH', fail_contains='DOES NOT MATCH PIN')),
+    dict(id='S08', page='suite', tamper=TAMPERED_FIXTURE + '-before.pdf', run_suite=True, note='Tampered fixture PDF (one byte): that fixture must fail on its hash, the suite must stay blocked', expect=dict(ready='YES', privacy='PASS', suite_result='blocked', failing_fixture=TAMPERED_FIXTURE)),
+    dict(id='E07', page='editor', kind='manifest-tampered', tamper='manifest', note='Editor with a tampered fixture manifest: startup refused, nothing can be opened'),
+    dict(id='E08', page='editor', kind='fixture-tampered', tamper=TAMPERED_FIXTURE + '-before.pdf', fixture=TAMPERED_FIXTURE, note='Editor with a tampered fixture PDF: the fixture is refused before a working document exists'),
 ]
 
 
@@ -294,7 +395,7 @@ def main():
             browser = pw.chromium.launch(headless=True)
             for sc in scenarios:
                 try:
-                    out = suite_scenario(browser, sc) if sc['page'] == 'suite' else editor_scenario(browser, sc)
+                    out = suite_scenario(browser, sc) if sc['page'] == 'suite' else host_scenario(browser, sc) if sc['page'] == 'host' else editor_scenario(browser, sc)
                 except Exception as e:  # a crash is a failure, never a pass
                     out = dict(id=sc['id'], note=sc['note'], problems=[f'harness error: {e}'])
                 out['verdict'] = 'OK' if not out['problems'] else 'UNEXPECTED'
