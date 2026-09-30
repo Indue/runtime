@@ -14,7 +14,7 @@
 # Order: fixtures and modules first, HTML last; every file is written to a temporary
 # name and renamed into place. Backups go outside public_html. POSIX sh only.
 set -eu
-RELEASE=phase10-corpus-lab-v1
+RELEASE=phase10b-corpus-lab-v1
 APPLY=0
 for arg in "$@"; do
   case "$arg" in
@@ -36,10 +36,11 @@ sha_of() {
   else openssl dgst -sha256 "$1" | sed 's/^.*= //'; fi
 }
 die() { echo "STOP: $*" >&2; exit 1; }
-# The only names Phase 10 owns and may write (phase10.css, phase10-*.*, te-corpus*.mjs).
+# The only names Phase 10 owns and may write (phase10.css, phase10-*.*, te-corpus.mjs,
+# te-corpus-env.mjs, te-corpus-clip.mjs).
 owned() {
   case "$1" in
-    lab/true-text-edit/phase10.css|lab/true-text-edit/phase10-*|lab/true-text-edit/te-corpus.mjs|lab/true-text-edit/te-corpus-env.mjs) ;;
+    lab/true-text-edit/phase10.css|lab/true-text-edit/phase10-*|lab/true-text-edit/te-corpus.mjs|lab/true-text-edit/te-corpus-env.mjs|lab/true-text-edit/te-corpus-clip.mjs) ;;
     *) return 1 ;;
   esac
   case "${1#lab/true-text-edit/}" in */*) return 1 ;; esac

@@ -480,7 +480,7 @@ def c15_export(r):
         r.page.click('#export')
     raw = open(dl.value.path(), 'rb').read()
     rep = json.loads(raw.decode('utf-8'))
-    r.check(rep['schema'] == 'noblepdf-phase10-corpus-report/1' and len(rep['documents']) == 3, 'export schema and document count')
+    r.check(rep['schema'] == 'noblepdf-phase10-corpus-report/2' and len(rep['documents']) == 3, 'export schema and document count')
     # Exact raw Producer/Creator values of p10-xref-stream.pdf. (A bare "Mozilla/5.0" would also
     # match the tester's own browser user agent, which environment.userAgent reports on purpose.)
     leaks = [x for x in ['Invoice Number', 'Jane Citizen', 'Consulting', '31337', 'invoice-number-longer', 'blocked-signed', 'p10-xref-stream', '%PDF', 'Skia/PDF m128', 'Mozilla/5.0 Chrome/128.0.0.0'] if x.encode() in raw]
@@ -553,7 +553,7 @@ def c19_host_files(r):
       return out;
     }""", ['/' + rel for _, rel in pins])
     bad = [f"{g['u']} HTTP {g['status']}" for g, (want, _) in zip(got, pins) if g['status'] != 200 or g['sha'] != want]
-    r.check(len(pins) == 19 and not bad, f'{len(pins)} lab files (8 Phase 10 deploy + 11 required) served with their pinned SHA-256 through the emulated live host {bad[:4] if bad else ""}')
+    r.check(len(pins) == 20 and not bad, f'{len(pins)} lab files (9 Phase 10 deploy + 11 required) served with their pinned SHA-256 through the emulated live host {bad[:4] if bad else ""}')
 
 
 def c17_upload_refused(r):
@@ -659,6 +659,85 @@ def c22_self_contained_styles(r):
     r.check(r.page.is_disabled('#files'), 'corpus processing disabled')
 
 
+def c23_clip_ui(r):
+    """Phase 10B through the UI: a page-size clip is shown as proven irrelevant and the edit
+    commits with every check including K01, X01 and D02; a clip that cuts the text blocks the
+    object; a replacement that would cross its clip is blocked before mutation."""
+    r.open()
+    r.preflight()
+    r.load([synthetic('p10b-page-clip.pdf'), synthetic('p10b-cut.pdf'), synthetic('p10b-tight.pdf')])
+    docs = {d['name']: d for d in r.state()['docs']}
+    pc = docs['p10b-page-clip.pdf']
+    objs = r.ev('(id) => window.__phase10Corpus.objects(id)', pc['id'])
+    r.check(objs and all(o['status'] == 'supported' and o['clip'] and o['clip']['verdict'] == 'contained' for o in objs), f'page clip: all {len(objs or [])} objects SUPPORTED, clip proven irrelevant')
+    r.show(pc['id'])
+    r.click_text('Invoice Number: 12345')
+    ins = r.page.inner_text('#inspector')
+    r.check('Clip geometry (Phase 10B): rectangular-known [0, 0, 612, 792]; verdict contained; PDFium and stream agree' in ins, 'inspector shows the clip geometry, the verdict and the agreement')
+    res = r.apply('Invoice Number: INV-2026-0012345')
+    r.check(res.startswith('Committed'), f'benign clip: verified commit ({res[:120]})')
+    rows = r.page.inner_text('#checks')
+    want = ['V01', 'V02', 'V03', 'V04', 'V05', 'V06', 'V07', 'V08', 'V09', 'V10', 'V11', 'V12', 'V13', 'D01', 'K01', 'X01', 'D02']
+    r.check(all(w in rows for w in want) and 'FAIL' not in rows, f'all {len(want)} checks present and PASS (K01 = clip containment after the edit)')
+    cut = docs['p10b-cut.pdf']
+    r.show(cut['id'])
+    orig = r.ev('(id) => window.__phase10Corpus.workingSha(id)', cut['id'])
+    r.click_text('Menu: Caf\u00e9 Z\u00fcrich')
+    reasons = r.page.inner_text('#reasons')
+    r.check('target-clipped' in reasons and 'clip-cuts-text' in reasons and r.page.is_disabled('#apply'), 'a clip that cuts the text: BLOCKED with target-clipped and clip-cuts-text, apply disabled')
+    r.check(r.ev('(id) => window.__phase10Corpus.workingSha(id)', cut['id']) == orig, 'cut: working bytes unchanged')
+    tight = docs['p10b-tight.pdf']
+    r.show(tight['id'])
+    orig = r.ev('(id) => window.__phase10Corpus.workingSha(id)', tight['id'])
+    r.click_text('Invoice Number: 12345')
+    r.check(not r.page.is_disabled('#apply'), 'tight clip: the object itself is inside its clip (SUPPORTED)')
+    res = r.apply('Invoice Number: INV-2026-0012345')
+    r.check(res.startswith('Blocked before mutation') and 'clip-candidate-outside' in res and 'NOT replaced' in res, f'a replacement crossing the clip is blocked before mutation ({res[:140]})')
+    stages = r.page.inner_text('#stages')
+    r.check('mutate' not in stages and 'planned replacement' in r.page.inner_text('#inspector'), 'no mutation stage ran; the planned replacement bounds are shown')
+    r.check(r.ev('(id) => window.__phase10Corpus.workingSha(id)', tight['id']) == orig and r.page.is_disabled('#download'), 'tight clip: working bytes unchanged, download disabled')
+    r.check(r.hook('audit()')['pass'], 'privacy audit still PASS')
+
+
+GEN_HTML = """<!doctype html><html><head><meta charset="utf-8"><style>
+body{font-family:"DejaVu Sans","Liberation Sans",Arial,sans-serif;font-size:11pt;margin:0}
+h1{font-size:18pt} table{border-collapse:collapse} td,th{border:1px solid #444;padding:4pt 6pt}
+</style></head><body><h1>Tax Invoice</h1><p>Invoice Number: 12345</p><p>Date: 30 September 2026</p>
+<table><tr><th>Item</th><th>Amount</th></tr><tr><td>Consulting services</td><td>450.00</td></tr></table><p>Total: 570.00</p></body></html>"""
+
+
+def c24_real_generator(r):
+    """A real generator: Chromium prints a PDF during the test (Skia, content-area clip around
+    all page content, flipped CTM). Before Phase 10B every text object was target-clipped;
+    now the page clip is proven irrelevant, and the export carries the clip facts, no text."""
+    path = os.path.join(INPUTS, 'p10b-chromium-print.pdf')
+    gen = r.ctx.browser.new_context()
+    try:
+        gp = gen.new_page()
+        gp.set_content(GEN_HTML)
+        gp.pdf(path=path, format='A4', margin={'top': '20mm', 'bottom': '20mm', 'left': '18mm', 'right': '18mm'})
+    finally:
+        gen.close()
+    raw = open(path, 'rb').read()
+    r.check(raw.startswith(b'%PDF') and b'Skia/PDF' in raw, f'Chromium printed a Skia PDF ({len(raw)} bytes)')
+    r.open()
+    r.preflight()
+    r.load([path])
+    d = r.state()['docs'][0]
+    objs = r.ev('(id) => window.__phase10Corpus.objects(id)', d['id']) or []
+    contained = [o for o in objs if o['clip'] and o['clip']['verdict'] == 'contained']
+    clipped_only = [o for o in objs if o['codes'] == ['target-clipped']]
+    r.check(objs and len(contained) >= 1 and all('target-clipped' not in o['codes'] for o in contained), f'{len(contained)} of {len(objs)} text objects sit inside the page clip, and none of them is blocked by it')
+    r.check(not clipped_only, f'no object is blocked by target-clipped alone ({len(clipped_only)})')
+    sm = d['summary']
+    r.check(sm['supported'] >= 1, f'real Chromium PDF: {sm["supported"]} supported, {sm["blocked"]} blocked, {sm["unknown"]} unknown; reasons {dict(list(sm["blockReasons"].items())[:6])}')
+    ex = r.ev('() => window.__phase10Corpus.exportReport()')
+    blob = json.dumps(ex)
+    eo = ex['documents'][0]['objects']
+    r.check(all('clip' in o for o in eo) and any(o['clip'] and o['clip']['verdict'] == 'contained' and o['clip']['effectiveRect'] for o in eo), 'export: clip facts per object (kind, rectangle, verdict)')
+    r.check('Invoice Number' not in blob and 'Consulting' not in blob and 'p10b-chromium-print' not in blob, 'export: no text and no file name by default')
+
+
 SCENARIOS = [
     dict(id='C01', run=c01_preflight, note='Preflight: Run #10 identity, API, pinned PDF.js, exact CSP, complete network ledger, no service worker'),
     dict(id='C02', run=c02_local_no_upload, note='Local file path: <input type=file> -> File.arrayBuffer -> analysis; no request with a body; file name never sent'),
@@ -682,6 +761,8 @@ SCENARIOS = [
     dict(id='C20', run=c20_favicon, note='Favicon: the declared pinned icon is allowed; /favicon.ico and unpinned icons fail the audit and disable processing'),
     dict(id='C21', run=c21_query_privacy, note='Query privacy: phase10.css?secret=JaneCitizen, %PDF and fixture-text values, extra keys, wrong versions, bad engine nonces and PDF.js queries all fail closed (fetch and Resource Timing)'),
     dict(id='C22', run=c22_self_contained_styles, note='Self-contained styles: with an 826-byte live phase8.css that is not the a3f9038 build, the page uses phase10-base.css (frozen copy), never requests phase8.css, renders the frozen styles; a phase8.css request fails the audit'),
+    dict(id='C23', run=c23_clip_ui, note='Phase 10B clip in the UI: page clip proven irrelevant (commit with V01..V13, D01, K01, X01, D02); a cutting clip blocks; a replacement crossing its clip is blocked before mutation'),
+    dict(id='C24', run=c24_real_generator, note='Real generator: a PDF printed by Chromium (Skia) during the test; its content-area clip no longer blocks ordinary text; export carries clip facts, no text'),
 ]
 NO_REQUEST_CHECK = {'C16', 'C17', 'C18'}  # these scenarios deliberately make the requests the check forbids
 ALLOW_FOREIGN = {'C12': (f'http://127.0.0.1:{PORT}/__p10/monitor.js',)}  # the injected script before the CSP loads by design

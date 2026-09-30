@@ -1,19 +1,25 @@
 // NoblePDF True Edit (Phase 10 lab): real-document corpus analysis. Browser and Node.
 // Everything here reuses the audited Phase 9 modules unchanged: analyze(), documentGates(),
 // targetGates(), planEdit(), applyEdit() and verifyEdit() decide what is editable and whether
-// an edit is accepted. This module only walks whole documents, collects inventory facts
+// an edit is accepted. Phase 10B: the Phase 9 `target-clipped` reason is decided by clip
+// geometry (te-corpus-clip.mjs): it is cleared only when PDFium and the content stream agree
+// on one rectangle clip that contains the original run and the planned candidate run, and K01
+// re-checks the reopened output; every other clip stays blocked with a precise code. The
+// Phase 9 modules themselves still block every clip. This module walks whole documents, collects inventory facts
 // (fonts, text state, structure) for engineering reports, and adds verification checks on
 // top of Phase 9's (never instead of them). It never uploads anything and has no DOM or
 // network access. Object text is kept in memory for the on-screen inspector only; the
 // export builder leaves it out unless explicitly asked. ASCII only.
-import { analyze, documentGates, targetGates, planEdit, applyEdit, verifyEdit, POS_TOL_PT } from './te-pipeline.mjs?v=1';
+import { analyze, documentGates, targetGates, applyEdit, verifyEdit, POS_TOL_PT } from './te-pipeline.mjs?v=1';
 import { OBJ } from './te-engine.mjs?v=1';
 import { toCodePoints, fromCodePoints, gapBounds } from './te-edit.mjs?v=1';
 import { PdfDoc, PdfRef, PdfName, nameOf, showXs, VALIDATED_FONT_CLASSES } from './te-pdf.mjs?v=1';
 import { sha256Hex, analyzeStructure, latin1 } from './phase8-verify.mjs?v=1';
+import { clipFacts, clipAwareTargetGates, planEditClipAware, outputClipCheck, clipDiagnostic, countMismatchCause, TE_CLIP_VERSION } from './te-corpus-clip.mjs?v=1';
 
-export const TE_CORPUS_VERSION = 'te-corpus-1';
-export const REPORT_SCHEMA = 'noblepdf-phase10-corpus-report/1';
+export const TE_CORPUS_VERSION = 'te-corpus-2';
+export const REPORT_SCHEMA = 'noblepdf-phase10-corpus-report/2';
+export { TE_CLIP_VERSION };
 export const MAX_FILE_BYTES = 100 * 1024 * 1024;
 export const STATUS = Object.freeze({ SUPPORTED: 'supported', BLOCKED: 'blocked', UNKNOWN: 'unknown' });
 // PDFium FPDF_GetLastError values (fpdfview.h).
@@ -221,7 +227,7 @@ function matrixFacts(m) {
 const sizeBucket = (s) => (!Number.isFinite(s) ? 'unknown' : s < 6 ? '<6' : s < 9 ? '6-9' : s < 12 ? '9-12' : s < 18 ? '12-18' : s < 36 ? '18-36' : '>=36');
 
 // Why an object that passed every gate is currently considered safe (evidence, not a promise).
-function supportedEvidence(a, o, plan) {
+function supportedEvidence(a, o, plan, clip = null) {
   const s = o.show;
   const ix = showXs(s);
   const worst = ix.reduce((m, x, k) => Math.max(m, Math.abs(x - o.xs[k])), 0);
@@ -230,7 +236,7 @@ function supportedEvidence(a, o, plan) {
     `document gates passed: not signed, not encrypted, modification permitted (flags 0x${a.doc.permissions.toString(16)}), no XFA, independent page tree agrees (${a.doc.pageCount} pages)`,
     `page gates passed: /Rotate 0, content stream not shared, content fully interpreted, ${a.mapping.detail}`,
     `mapped to content operation ${s.op} (op #${s.opIndex}${s.inForm ? `, form ${s.inForm}` : ''}); ${o.real.length} PDFium characters, contiguous, none generated`,
-    `render mode 0 (fill), no clip path (PDFium and content stream), Ts 0${o.marks.length ? `, marked content ${o.marks.map((m) => `/${m.name}${m.keys.length ? `(${m.keys.join(',')})` : ''}`).join(' ')} (allowed)` : ', no marked content'}`,
+    `render mode 0 (fill), ${clip && clip.verdict === 'contained' ? `clip proven irrelevant (Phase 10B geometry): ${clip.detail}` : 'no clip path (PDFium and content stream)'}, Ts 0${o.marks.length ? `, marked content ${o.marks.map((m) => `/${m.name}${m.keys.length ? `(${m.keys.join(',')})` : ''}`).join(' ')} (allowed)` : ', no marked content'}`,
     `first glyph at object origin; baseline residual ${o.baselineResidual.toFixed(4)} pt (<= 0.01)`,
     `font ${s.font.baseFont} is a validated class (${s.font.fontClass}); widths from ${s.font.widthSource}`,
     `independent interpreter agrees with PDFium: ${s.glyphs.length} glyph codes, Unicode per glyph, positions within ${worst.toExponential(1)} pt (limit ${POS_TOL_PT}), font size ${o.size}`,
@@ -249,6 +255,9 @@ function supportedEvidence(a, o, plan) {
 export async function classifyPage(E, bytes, pageIndex, { pdfjs = null, probe = true } = {}) {
   const a = await analyze(E, bytes, pageIndex, { pdfjs });
   const gates = documentGates(a);
+  let facts = null;
+  let factsError = null;
+  try { facts = await clipFacts(E, bytes, a); } catch (e) { factsError = msg(e); }
   const fonts = new Map();
   const fontOf = (model) => {
     if (!model) return null;
@@ -288,14 +297,19 @@ export async function classifyPage(E, bytes, pageIndex, { pdfjs = null, probe = 
       tc: s ? s.tc : null, tw: s ? s.tw : null, tz: s ? round(s.tz, 3) : null, ts: s ? s.ts : null, tr: s ? s.tr : null, op: s ? s.op : null,
       tjAdjustments: s && s.tj ? s.tj.filter((x) => typeof x === 'number').length : 0, clipInStream: s ? !!s.clip : null, mapped: !!s,
     };
-    const reasons = [...gates, ...targetGates(a, o.index)];
+    const cg = facts ? await clipAwareTargetGates(a, o.index, facts) : { reasons: targetGates(a, o.index), verdict: null };
+    // Without clip facts the Phase 9 clip reasons stand, with the cause recorded.
+    if (!facts && cg.reasons.some((r) => r.code === 'target-clipped')) cg.reasons.push({ stage: 'target', code: 'clip-geometry-unknown', detail: `clip facts unavailable: ${factsError}` });
+    rec.clip = facts ? clipDiagnostic(facts.get(o.index), cg.verdict) : null;
+    rec.countMismatch = countMismatchCause(a, o.index);
+    const reasons = [...gates, ...cg.reasons];
     if (reasons.length) { rec.status = STATUS.BLOCKED; rec.reasons = reasons; }
     else if (!probe) { rec.status = STATUS.UNKNOWN; rec.reasons = [{ stage: 'phase10', code: 'probe-not-run', detail: 'gates passed; the planning probe was skipped (quick mode)' }]; }
     else {
       try {
         const cps = toCodePoints(o.realText);
-        const plan = await planEdit(E, bytes, { pageIndex, objIndex: o.index, start: 0, end: cps.length, replacement: o.realText, fit: false, analysis: a, pdfjs });
-        if (plan.ok) { rec.status = STATUS.SUPPORTED; rec.why = supportedEvidence(a, o, plan); } else { rec.status = STATUS.BLOCKED; rec.reasons = plan.reasons.map((r) => ({ ...r, detail: `${r.detail} (planning probe on the object's own text)` })); }
+        const plan = await planEditClipAware(E, bytes, { pageIndex, objIndex: o.index, start: 0, end: cps.length, replacement: o.realText, fit: false, analysis: a, pdfjs }, facts);
+        if (plan.ok) { rec.status = STATUS.SUPPORTED; rec.why = supportedEvidence(a, o, plan, cg.verdict); } else { rec.status = STATUS.BLOCKED; rec.reasons = plan.reasons.map((r) => ({ ...r, detail: `${r.detail} (planning probe on the object's own text)` })); }
       } catch (e) {
         rec.status = STATUS.UNKNOWN;
         rec.reasons = [{ stage: 'phase10', code: 'probe-error', detail: msg(e) }];
@@ -387,7 +401,8 @@ export async function analyzeDocument(E, bytes, { name = '', pdfjs = null, maxPa
       pg.textObjects++;
       pg[rec.status]++;
       if (rec.marks.length) pg.markedTextObjects++;
-      if (rec.clipPaths > 0 || rec.clipInStream) pg.clippedTextObjects++;
+      if (rec.clipPaths > 0 || rec.clipInStream || (rec.clip && rec.clip.kind !== 'none')) pg.clippedTextObjects++;
+      if (rec.clip && rec.clip.verdict === 'contained') pg.benignClipTextObjects = (pg.benignClipTextObjects || 0) + 1;
       rep.objects.push(rec);
     }
     if (onProgress) onProgress(pi + 1, total);
@@ -513,7 +528,7 @@ export function documentInvariantCheck(E, before, after, pageIndex) {
 // `selection` ({ start, end, replacement } in code points, as te-suite.mjs passes it) replaces
 // the editor-style diff of old and new text; the fixture parity tests use it.
 export async function runVerifiedEdit(E, bytes, { pageIndex, objIndex, expectedOldText, newText, selection = null, fit = false, pdfjs = null, extraChecks = null, applyEngine = null }) {
-  const res = { status: null, stages: [], reasons: [], checks: [], plan: null, bytes: null, inputSha: await sha256Hex(bytes), outputSha: null, oldText: null, newText: null };
+  const res = { status: null, stages: [], reasons: [], checks: [], plan: null, bytes: null, inputSha: await sha256Hex(bytes), outputSha: null, oldText: null, newText: null, clip: null };
   const stage = (name, ok, detail) => res.stages.push({ name, ok, detail: String(detail) });
   const done = (status) => { res.status = status; return res; };
   let a;
@@ -525,7 +540,11 @@ export async function runVerifiedEdit(E, bytes, { pageIndex, objIndex, expectedO
     return done('stale');
   }
   res.oldText = o.realText;
-  const gates = [...documentGates(a), ...targetGates(a, objIndex)];
+  let facts;
+  try { facts = await clipFacts(E, bytes, a); } catch (e) { stage('classify', false, `clip facts: ${msg(e)}`); res.reasons = [{ stage: 'classify', code: 'clip-geometry-unknown', detail: msg(e) }]; return done('blocked'); }
+  const cg = await clipAwareTargetGates(a, objIndex, facts);
+  res.clip = clipDiagnostic(facts.get(objIndex), cg.verdict);
+  const gates = [...documentGates(a), ...cg.reasons];
   stage('classify', gates.length === 0, gates.length ? gates.map((g) => g.code).join(', ') : 'document and target gates passed');
   if (gates.length) { res.reasons = gates; return done('blocked'); }
   let sel = selection;
@@ -534,9 +553,10 @@ export async function runVerifiedEdit(E, bytes, { pageIndex, objIndex, expectedO
     if (d.same) { stage('encode', false, 'nothing changed'); res.reasons = [{ stage: 'input', code: 'no-change', detail: 'the new text equals the current text' }]; return done('unchanged'); }
     sel = { start: d.start, end: d.end, replacement: toCodePoints(newText).length ? d.replacement : '' };
   }
-  const plan = await planEdit(E, bytes, { pageIndex, objIndex, start: sel.start, end: sel.end, replacement: sel.replacement, fit, analysis: a, pdfjs });
+  const plan = await planEditClipAware(E, bytes, { pageIndex, objIndex, start: sel.start, end: sel.end, replacement: sel.replacement, fit, analysis: a, pdfjs }, facts);
   res.plan = plan;
-  stage('encode + plan', plan.ok, plan.ok ? `${plan.oldCodes.length} -> ${plan.newCodes.length} glyph codes (${plan.font.fontClass}); layout ${plan.discriminating ? 'needs SetPositions' : 'natural'}` : plan.reasons.map((r) => r.code).join(', '));
+  if (plan.clip) res.clip = clipDiagnostic(facts.get(objIndex), plan.clip.candidate || plan.clip.original);
+  stage('encode + plan', plan.ok, plan.ok ? `${plan.oldCodes.length} -> ${plan.newCodes.length} glyph codes (${plan.font.fontClass}); layout ${plan.discriminating ? 'needs SetPositions' : 'natural'}${plan.clip ? '; candidate inside the clip rectangle (checked before mutation)' : ''}` : plan.reasons.map((r) => r.code).join(', '));
   if (!plan.ok) { res.reasons = plan.reasons; return done('blocked'); }
   res.newText = plan.newText;
   let out;
@@ -551,6 +571,8 @@ export async function runVerifiedEdit(E, bytes, { pageIndex, objIndex, expectedO
   const v = await verifyEdit(E, bytes, out, plan, { pdfjs });
   const checks = [...v.checks];
   checks.push(documentInvariantCheck(E, bytes, out, pageIndex));
+  // Phase 10B: a clip was cleared by geometry, so the reopened output must prove it (K01).
+  if (plan.clip && plan.clip.region) checks.push(await outputClipCheck(E, out, plan));
   if (extraChecks) {
     try { checks.push(...await extraChecks(bytes, out, plan)); } catch (e) { checks.push({ id: 'X00', name: 'extra verification ran', pass: false, evidence: msg(e) }); }
   }
@@ -676,14 +698,15 @@ function docExport(d, i, { includeFileNames, samples, includeGeneratorStrings })
     documentReasons: r.documentReasons.map((x) => x.code),
     pagesDetail: r.pages.map((p) => ({ index: p.index, status: p.status, size: p.size, rotation: p.rotation, rotateIndependent: p.rotateIndependent, mediaBox: p.mediaBox && p.mediaBox.map((v) => round(v, 2)), cropBox: p.cropBox && p.cropBox.map((v) => round(v, 2)), census: p.census, annots: p.annots, annotSubtypes: p.annotSubtypes,
       independent: p.independent, pageReasons: p.pageReasons.map((x) => x.code), textObjects: p.textObjects, supported: p.supported, blocked: p.blocked, unknown: p.unknown, formTextShows: p.formTextShows,
-      markedTextObjects: p.markedTextObjects, optionalContentShows: p.optionalContentShows, actualTextShows: p.actualTextShows, clippedTextObjects: p.clippedTextObjects, error: p.error ? (samples === 'plain' ? p.error : 'error (detail withheld)') : null })),
+      markedTextObjects: p.markedTextObjects, optionalContentShows: p.optionalContentShows, actualTextShows: p.actualTextShows, clippedTextObjects: p.clippedTextObjects, benignClipTextObjects: p.benignClipTextObjects || 0, error: p.error ? (samples === 'plain' ? p.error : 'error (detail withheld)') : null })),
     fonts: r.fonts.map((f) => ({ id: f.id, name: f.name, subset: f.subset, kind: f.kind, subtype: f.subtype, descendant: f.descendant, embedded: f.embedded, fontFile: f.fontFile, encoding: f.encoding, toUnicode: f.toUnicode, symbolic: f.symbolic, vertical: f.vertical, fontClass: f.fontClass, validated: f.validated, blockCode: f.blockCode, shows: f.shows, glyphs: f.glyphs, formShows: f.formShows, pages: f.pages.length })),
     textState: r.textState,
     objects: r.objects.map((o) => ({ page: o.page, objIndex: o.objIndex, status: o.status, codes: o.codes, stages: [...new Set(o.reasons.map((x) => x.stage))], fontId: o.fontId, fontClass: o.fontClass, size: o.size, glyphs: o.glyphs, generatedChars: o.generatedChars,
       tc: o.tc, tw: o.tw, tz: o.tz, ts: o.ts, renderMode: o.renderMode, op: o.op, tjAdjustments: o.tjAdjustments, angle: o.angle, skewed: o.skewed, clipped: o.clipPaths > 0 || !!o.clipInStream, marks: o.marks.map((m) => m.name),
+      clip: o.clip || null, countMismatch: o.countMismatch || null, bounds: o.bounds,
       sample: sampleOf(o.text, samples), details: samples === 'plain' ? o.reasons.map((x) => `${x.code}: ${clip(x.detail, 120)}`) : undefined })),
     formText: r.formText, summary: r.summary, seconds: r.seconds,
-    editTests: d.edits.map((e) => ({ page: e.page, objIndex: e.objIndex, status: e.status, codes: e.codes, failedChecks: e.failedChecks, checks: e.checks, discriminating: e.discriminating, naturalDelta: e.naturalDelta, fontClass: e.fontClass,
+    editTests: d.edits.map((e) => ({ page: e.page, objIndex: e.objIndex, status: e.status, codes: e.codes, failedChecks: e.failedChecks, checks: e.checks, discriminating: e.discriminating, naturalDelta: e.naturalDelta, fontClass: e.fontClass, clip: e.clip || null,
       oldSample: sampleOf(e.oldText || '', samples), newSample: sampleOf(e.newText || '', samples) })),
   };
 }
@@ -723,5 +746,5 @@ export function sessionSummary(session) {
 export function editRecord(sel, result) {
   const p = result.plan || {};
   return { page: sel.pageIndex, objIndex: sel.objIndex, status: result.status, codes: [...new Set(result.reasons.map((r) => r.code))], failedChecks: result.checks.filter((c) => !c.pass).map((c) => c.id), checks: result.checks.length,
-    discriminating: p.discriminating ?? null, naturalDelta: Number.isFinite(p.naturalDelta) ? round(p.naturalDelta, 3) : null, fontClass: p.font ? p.font.fontClass : null, oldText: result.oldText, newText: result.newText, stages: result.stages.map((s) => `${s.ok ? 'ok' : 'STOP'} ${s.name}`), t: new Date().toISOString() };
+    discriminating: p.discriminating ?? null, naturalDelta: Number.isFinite(p.naturalDelta) ? round(p.naturalDelta, 3) : null, fontClass: p.font ? p.font.fontClass : null, clip: result.clip || null, oldText: result.oldText, newText: result.newText, stages: result.stages.map((s) => `${s.ok ? 'ok' : 'STOP'} ${s.name}`), t: new Date().toISOString() };
 }

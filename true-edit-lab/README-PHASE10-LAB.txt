@@ -1,9 +1,16 @@
-NoblePDF True Edit - Phase 10 real-PDF corpus harness (release noblepdf-trueedit-phase10-corpus-lab-v1)
+NoblePDF True Edit - Phase 10 real-PDF corpus harness (release noblepdf-trueedit-phase10b-corpus-lab-v1)
 ======================================================================================================
 
 LAB ONLY. ENGINEERING / RESEARCH TOOL. NOT THE PUBLIC EDITOR. NOT PRODUCTION-READY.
 Baseline: Phase 9 frozen at a3f9038 (includes the te-env.mjs network-audit fix). Phase 10 only
 ADDS files; no Phase 9 file, production file or vendor file is changed.
+
+Phase 10B (this release): clip geometry. Real generators (Chromium/Skia, LibreOffice, Word)
+wrap page content in a page-size rectangle clip, and the Phase 9 clip signal blocked every text
+object under ANY clip. On the corpus path, `target-clipped` is now decided by geometry
+(te-corpus-clip.mjs): cleared only when PDFium and the content stream agree on one rectangle
+that contains the original text and the planned replacement; K01 re-checks the output. Every
+other clip stays blocked with a precise code. See AUDIT-REPORT-PHASE10B.md.
 
 What it is
 ----------
@@ -85,8 +92,9 @@ Package contents (Phase 10 additions only)
       te-corpus.mjs                                            document analysis, classification,
                                                                verified edit runner, session, export
       te-corpus-env.mjs                                        strict privacy/integrity audit
+      te-corpus-clip.mjs                                       Phase 10B clip geometry, K01
   deploy/phase10-lab-deploy.sh, phase10-lab-rollback.sh       dry run by default, --apply
-  deploy/phase10-deploy-files.txt                             the 8 Phase 10-owned files deployed
+  deploy/phase10-deploy-files.txt                             the 9 Phase 10-owned files deployed
                                                               (SHA-256)
   deploy/phase10-required-unchanged.txt                       15 live files that must match their
                                                               a3f9038 / Run #10 / PDF.js pins
@@ -98,32 +106,35 @@ Package contents (Phase 10 additions only)
 A. Deploy (GoDaddy SSH shell, POSIX sh)
 ---------------------------------------
   Prerequisite: the Phase 9 lab at a3f9038 is live (it is: Run #10 identity, 47/47).
-  1. Download the artifact "noblepdf-trueedit-phase10-corpus-lab-v1" from the green
+  1. Download the artifact "noblepdf-trueedit-phase10b-corpus-lab-v1" from the green
      true-edit-phase10-corpus workflow run of this branch (it contains the zip), or build it:
      python3 tests/tools/build_phase10_package.py OUT_DIR
-     Upload noblepdf-trueedit-phase10-corpus-lab-v1.zip to your home folder (NOT public_html).
+     Upload noblepdf-trueedit-phase10b-corpus-lab-v1.zip to your home folder (NOT public_html).
   2. In the SSH terminal:
-       cd ~ && mkdir -p noblepdf-releases && mv noblepdf-trueedit-phase10-corpus-lab-v1.zip noblepdf-releases/
-       cd noblepdf-releases && unzip -o noblepdf-trueedit-phase10-corpus-lab-v1.zip
-       cd noblepdf-trueedit-phase10-corpus-lab-v1
+       cd ~ && mkdir -p noblepdf-releases && mv noblepdf-trueedit-phase10b-corpus-lab-v1.zip noblepdf-releases/
+       cd noblepdf-releases && unzip -o noblepdf-trueedit-phase10b-corpus-lab-v1.zip
+       cd noblepdf-trueedit-phase10b-corpus-lab-v1
        sha256sum -c MANIFEST.sha256 | grep -v ': OK$'        (should print nothing)
        sh deploy/phase10-lab-deploy.sh
-     Expected dry run: 8 package files verified; 15 required server files verified (te-env.mjs
+     Expected dry run: 9 package files verified; 15 required server files verified (te-env.mjs
      must be the a3f9038 build; if a live file differs the script STOPs and changes nothing);
-     plan "new 8, replace 0, unchanged 0". Any STOP: paste it back.
+     plan "new 1, replace 4, unchanged 4" over the live Phase 10 (d7b121d): te-corpus-clip.mjs
+     is new; te-corpus.mjs, te-corpus-env.mjs, phase10-corpus.js and phase10-corpus.html are
+     replaced (new cache versions ?v=2); the rest is unchanged. Any STOP: paste it back.
      phase8.css is neither checked, planned nor written: the live copy (about 826 bytes, found
      by the 2026-09-30 dry run) is not the a3f9038 build, so Phase 10 ships phase10-base.css
      instead and leaves phase8.css exactly as it is.
   3. sh deploy/phase10-lab-deploy.sh --apply
-     Expected ending: "DEPLOYED phase10-corpus-lab-v1. Backup: ..." Keep the backup path.
-  4. Optional: the dry run again shows "new 0, replace 0, unchanged 8".
+     Expected ending: "DEPLOYED phase10b-corpus-lab-v1. Backup: ..." Keep the backup path.
+  4. Optional: the dry run again shows "new 0, replace 0, unchanged 9".
   5. Icon check (.png was not probed on the live host like .txt/.pdf/.json): open
      https://app.noblepdf.com/lab/true-text-edit/phase10-favicon.png?v=1 - it must show the
      small purple icon (not 403/404). If it does not, do not use the page: its audit would fail.
   Rollback: sh deploy/phase10-lab-rollback.sh BACKUP_DIR (dry run), then add --apply. It
-  removes the 8 Phase 10 files. Both scripts refuse any file name Phase 10 does not own
-  (phase10.css, phase10-*, te-corpus*.mjs), so Phase 8 and Phase 9 files, phase8.css included,
-  are never written, replaced, removed or backed up.
+  restores the 4 replaced files and removes te-corpus-clip.mjs (back to Phase 10 d7b121d).
+  Both scripts refuse any file name Phase 10 does not own (phase10.css, phase10-*,
+  te-corpus.mjs, te-corpus-env.mjs, te-corpus-clip.mjs), so Phase 8 and Phase 9 files,
+  phase8.css included, are never written, replaced, removed or backed up.
 
 B. Live test (desktop Chrome, fresh tab, hard refresh Ctrl+Shift+R)
 -------------------------------------------------------------------

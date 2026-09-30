@@ -33,7 +33,7 @@ for list in replaced.txt created.txt created-dirs.txt; do
     case "/$rel/" in */../*|*/./*|*//*) echo "STOP: $list names a path with empty, . or .. segments: $rel" >&2; exit 1 ;; esac
     [ "$list" = created-dirs.txt ] && continue
     case "$rel" in
-      lab/true-text-edit/phase10.css|lab/true-text-edit/phase10-*|lab/true-text-edit/te-corpus.mjs|lab/true-text-edit/te-corpus-env.mjs) ;;
+      lab/true-text-edit/phase10.css|lab/true-text-edit/phase10-*|lab/true-text-edit/te-corpus.mjs|lab/true-text-edit/te-corpus-env.mjs|lab/true-text-edit/te-corpus-clip.mjs) ;;
       *) echo "STOP: $list names a file Phase 10 does not own: $rel" >&2; exit 1 ;;
     esac
     case "${rel#lab/true-text-edit/}" in */*) echo "STOP: $list names a file Phase 10 does not own: $rel" >&2; exit 1 ;; esac

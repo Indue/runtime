@@ -8,7 +8,7 @@
   python3 tests/tools/build_phase10_package.py OUT_DIR        also assembles OUT_DIR/<release>/,
                                                               its MANIFEST.sha256 and OUT_DIR/<release>.zip
 
-Only the eight NEW Phase 10-owned files are deployed. Everything they build on is already live
+Only the nine NEW Phase 10-owned files are deployed (Phase 10B adds te-corpus-clip.mjs). Everything they build on is already live
 and listed in phase10-required-unchanged.txt with its pinned SHA-256: the Phase 9 lab modules
 exactly as frozen at a3f9038 (taken from the Phase 9 deploy-files.txt and required-unchanged.txt,
 so te-env.mjs must be the te-env-2 network-audit fix), the Run #10 engine and PDF.js 3.11.174.
@@ -26,12 +26,12 @@ import shutil
 import sys
 import zipfile
 
-RELEASE = 'noblepdf-trueedit-phase10-corpus-lab-v1'
+RELEASE = 'noblepdf-trueedit-phase10b-corpus-lab-v1'
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 APP = os.path.join(ROOT, 'public_html', 'app.noblepdf.com')
 LAB = 'lab/true-text-edit/'
 # Deploy order: modules and scripts first, the page last.
-PHASE10 = ['te-corpus.mjs', 'te-corpus-env.mjs', 'phase10-base.css', 'phase10.css', 'phase10-favicon.png', 'phase10-net-guard.js', 'phase10-corpus.js', 'phase10-corpus.html']
+PHASE10 = ['te-corpus-clip.mjs', 'te-corpus.mjs', 'te-corpus-env.mjs', 'phase10-base.css', 'phase10.css', 'phase10-favicon.png', 'phase10-net-guard.js', 'phase10-corpus.js', 'phase10-corpus.html']
 # Phase 9 lab files the Phase 10 page loads (pins come from the frozen Phase 9 lists).
 PHASE9_DEPS = ['te-data.mjs', 'te-ttf.mjs', 'te-pdf.mjs', 'te-edit.mjs', 'te-engine.mjs', 'te-pipeline.mjs', 'te-render.mjs', 'te-env.mjs', 'phase9.css',
                'phase8-verify.mjs', 'phase8-csp-guard.js']
@@ -136,7 +136,7 @@ def build(out):
         os.makedirs(os.path.join(pkg, 'deploy'), exist_ok=True)
         shutil.copy2(os.path.join(ROOT, 'deploy', f), os.path.join(pkg, 'deploy', f))
     copy_tree(os.path.join(ROOT, 'tests'), os.path.join(pkg, 'tests'))
-    for doc in ('README-PHASE10-LAB.txt', 'AUDIT-REPORT-PHASE10.md'):
+    for doc in ('README-PHASE10-LAB.txt', 'AUDIT-REPORT-PHASE10.md', 'AUDIT-REPORT-PHASE10B.md'):
         shutil.copy2(os.path.join(ROOT, doc), os.path.join(pkg, doc))
     lines = []
     for dd, dirs, files in os.walk(pkg):

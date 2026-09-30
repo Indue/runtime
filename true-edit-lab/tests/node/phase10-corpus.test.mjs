@@ -36,7 +36,12 @@ const objByText = (rep, text, page = 0) => rep.objects.find((o) => o.page === pa
 const replaced = (obj, find, repl) => { const i = obj.indexOf(find); return obj.slice(0, i) + repl + obj.slice(i + find.length); };
 
 // ------------------------------------------------------------------ parity with Phase 9
-test('all 47 fixtures: corpus classification + corpus edit path reproduce every Phase 9 expectation (22 committed, 25 failed closed)', needEdits, async () => {
+// Phase 10B decides `target-clipped` by clip geometry on the corpus path. Exactly one Phase 9
+// fixture changes: blocked-clip draws "Clipped cell value 99" inside the rectangle clip
+// [60 690 360 720], which contains the original and the replacement ("100") by several points
+// (tests/node/phase10b-clip.test.mjs, test 12). The Phase 9 pipeline itself still blocks it.
+const PHASE10B_DELTA = { 'blocked-clip': 'committed' };
+test('all 47 fixtures: corpus classification + corpus edit path reproduce every Phase 9 expectation except the one documented Phase 10B delta (23 committed, 24 failed closed)', needEdits, async () => {
   const counts = { committed: 0, blocked: 0, rejected: 0 };
   const problems = [];
   for (const fx of manifest.fixtures) {
@@ -64,27 +69,36 @@ test('all 47 fixtures: corpus classification + corpus edit path reproduce every 
       assert.equal(await sha256Hex(bytes), fx.sha256.before, `${fx.id}: source bytes unchanged`);
       if (r.status !== 'committed') assert.equal(r.bytes, null, `${fx.id}: no output bytes unless committed`);
       if (r.status === 'committed') {
-        const ref = await compareWithReference(E, r.bytes, await load(fx.reference), fx, r.plan, { pdfjs });
-        for (const c of ref) if (!c.pass) problems.push(`${fx.id}: ${c.id} ${c.name} (${c.evidence.slice(0, 120)})`);
+        if (fx.reference) {
+          const ref = await compareWithReference(E, r.bytes, await load(fx.reference), fx, r.plan, { pdfjs });
+          for (const c of ref) if (!c.pass) problems.push(`${fx.id}: ${c.id} ${c.name} (${c.evidence.slice(0, 120)})`);
+        } else if (!PHASE10B_DELTA[fx.id]) problems.push(`${fx.id}: committed without an independent reference`);
         const d01 = r.checks.find((c) => c.id === 'D01');
         if (!d01 || !d01.pass) problems.push(`${fx.id}: D01 missing or failed`);
+        if (PHASE10B_DELTA[fx.id]) {
+          const k01 = r.checks.find((c) => c.id === 'K01');
+          if (!k01 || !k01.pass) problems.push(`${fx.id}: K01 missing or failed`);
+          if (!r.checks.every((c) => c.pass) || r.checks.filter((c) => /^V\d\d$/.test(c.id)).length !== 13) problems.push(`${fx.id}: not every V01..V13 check ran and passed`);
+        }
       }
       // The corpus classification of the target object agrees with the gates the edit met.
       const cls = rep.objects.find((o) => o.page === pageIndex && o.objIndex === oi);
       const gateStage = r.stages.find((s) => s.name === 'classify');
-      if (fx.expect.status === 'committed' && cls.status !== STATUS.SUPPORTED) problems.push(`${fx.id}: target classified ${cls.status} (${cls.codes}) but the edit commits`);
+      if ((PHASE10B_DELTA[fx.id] || fx.expect.status) === 'committed' && cls.status !== STATUS.SUPPORTED) problems.push(`${fx.id}: target classified ${cls.status} (${cls.codes}) but the edit commits`);
       if (gateStage && !gateStage.ok) {
         if (cls.status !== STATUS.BLOCKED) problems.push(`${fx.id}: gates block the edit but the object is classified ${cls.status}`);
         for (const c of codes) if (!cls.codes.includes(c)) problems.push(`${fx.id}: classification lacks gate code ${c}`);
       }
     }
-    if (status !== fx.expect.status) problems.push(`${fx.id}: status ${status}, expected ${fx.expect.status} (${codes.join(',')})`);
-    for (const c of fx.expect.reasons || []) if (fx.expect.status !== 'committed' && !codes.includes(c)) problems.push(`${fx.id}: missing reason ${c} (got ${codes.join(',')})`);
+    const expectStatus = PHASE10B_DELTA[fx.id] || fx.expect.status;
+    if (status !== expectStatus) problems.push(`${fx.id}: status ${status}, expected ${expectStatus} (${codes.join(',')})`);
+    for (const c of fx.expect.reasons || []) if (expectStatus !== 'committed' && !codes.includes(c)) problems.push(`${fx.id}: missing reason ${c} (got ${codes.join(',')})`);
     counts[status] = (counts[status] || 0) + 1;
   }
   assert.deepEqual(problems, []);
   assert.equal(manifest.fixtures.length, 47);
-  assert.deepEqual(counts, { committed: 22, blocked: 24, rejected: 1 });
+  assert.deepEqual(counts, { committed: 23, blocked: 23, rejected: 1 });
+  assert.equal(manifest.fixtures.filter((f) => f.expect.status === 'committed').length, 22, 'the Phase 9 manifest itself is unchanged (22 committed)');
 });
 
 test('SetPositions-disabled control through the corpus edit path is rejected (V05)', needEdits, async () => {
@@ -136,8 +150,8 @@ test('Form XObject text is blocked (text-in-form-xobject) and never offered as a
   assert.ok(rep.summary.percentEditableChars < 100);
 });
 
-test('Type3, vertical, text rise, clip, optional content, ActualText, rotation, shared content stay BLOCKED with every code', async () => {
-  const want = { 'blocked-type3': ['abab', ['font-type3']], 'blocked-vertical': ['Vertical text', ['font-vertical']], 'blocked-text-rise': ['Raised note', ['text-rise-not-validated']], 'blocked-clip': ['Clipped cell value 99', ['target-clipped']],
+test('Type3, vertical, text rise, optional content, ActualText, rotation, shared content stay BLOCKED with every code (clips: phase10b-clip.test.mjs)', async () => {
+  const want = { 'blocked-type3': ['abab', ['font-type3']], 'blocked-vertical': ['Vertical text', ['font-vertical']], 'blocked-text-rise': ['Raised note', ['text-rise-not-validated']],
     'blocked-optional-content': ['Layered words', ['optional-content']], 'blocked-page-rotate': ['Rotated page text', ['page-rotation-not-validated']], 'blocked-shared-content': ['Shared content 42', ['shared-content-stream']], 'blocked-no-unicode-map': [null, ['font-no-unicode-map']] };
   for (const [id, [text, codes]] of Object.entries(want)) {
     const rep = await analyzeDocument(E, await before(id), { pdfjs });
@@ -154,6 +168,11 @@ test('Type3, vertical, text rise, clip, optional content, ActualText, rotation, 
   assert.ok(objByText(v, 'Vertical text').codes.length >= 2, 'multiple reasons are not hidden');
   const t3 = await analyzeDocument(E, await before('blocked-type3'), { pdfjs });
   assert.ok(t3.fonts.some((f) => f.subtype === 'Type3' && f.blockCode === 'font-type3'));
+  // Phase 10B: the blocked-clip fixture's clip provably contains its text (documented delta).
+  const bc = await analyzeDocument(E, await before('blocked-clip'), { pdfjs });
+  const bo = objByText(bc, 'Clipped cell value 99');
+  assert.equal(bo.status, STATUS.SUPPORTED, bo.codes.join(','));
+  assert.equal(bo.clip.verdict, 'contained');
 });
 
 test('missing glyph: the object is supported, but an edit needing an absent glyph is blocked before mutation', needEdits, async () => {
@@ -382,7 +401,7 @@ test('export: no file names, no document text, no reason details, no raw Produce
   const def = JSON.stringify(buildExport(s));
   for (const x of secrets) assert.ok(!def.includes(x), `default export leaks ${x}`);
   const rep = JSON.parse(def);
-  assert.equal(rep.schema, 'noblepdf-phase10-corpus-report/1');
+  assert.equal(rep.schema, 'noblepdf-phase10-corpus-report/2');
   assert.equal(rep.documents.length, 5);
   assert.equal(rep.documents[0].fileName, null);
   assert.equal(rep.privacy.generatorStrings, false);

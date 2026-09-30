@@ -6,8 +6,8 @@
 import { loadVerifiedEngine, RUN10 } from './te-engine.mjs?v=1';
 import { pdfjsLib, browserPdfjs, renderToCanvas, compareRenders, grow, union, PDFJS_PIN } from './te-render.mjs?v=1';
 import { sha256Hex } from './phase8-verify.mjs?v=1';
-import { analyzeDocument, classifyPage, runVerifiedEdit, CorpusSession, buildExport, sessionSummary, editRecord, failedReport, MAX_FILE_BYTES, STATUS, TE_CORPUS_VERSION } from './te-corpus.mjs?v=1';
-import { corpusAudit, quickCheck, ledgerMark, requestsSince, ENGINE_BASE } from './te-corpus-env.mjs?v=1';
+import { analyzeDocument, classifyPage, runVerifiedEdit, CorpusSession, buildExport, sessionSummary, editRecord, failedReport, MAX_FILE_BYTES, STATUS, TE_CORPUS_VERSION } from './te-corpus.mjs?v=2';
+import { corpusAudit, quickCheck, ledgerMark, requestsSince, ENGINE_BASE } from './te-corpus-env.mjs?v=2';
 
 const PAGE_VERSION = 'phase10-corpus-1';
 const DISPLAY_SCALE = 1.5;
@@ -338,6 +338,19 @@ function selectAt(clientX, clientY) {
   selectObject(hits[0].objIndex);
 }
 
+// Phase 10B clip diagnostic (numbers and codes only; te-corpus-clip.mjs).
+const R = (x) => (x ? `[${x.x0}, ${x.y0}, ${x.x1}, ${x.y1}]` : '-');
+const B = (x) => (x ? `[${x.left}, ${x.bottom}, ${x.right}, ${x.top}]` : '-');
+function clipLines(c) {
+  if (!c) return ['Clip geometry (Phase 10B): not available'];
+  const out = [`Clip geometry (Phase 10B): ${c.kind}${c.effectiveRect ? ` ${R(c.effectiveRect)}` : ''}; verdict ${c.verdict || '-'}${c.code ? ` (${c.code})` : ''}; PDFium and stream ${c.agree ? 'agree' : 'DISAGREE'}`];
+  if (c.kind !== 'none') {
+    out.push(`  PDFium: ${c.pdfiumClipPaths < 0 ? 'no clip' : `${c.pdfiumClipPaths} path(s), segments ${JSON.stringify(c.pdfiumSegments)}`} (${c.pdfiumKind}${c.pdfiumRect ? ` ${R(c.pdfiumRect)}` : ''}); content stream: ${c.streamKind}${c.streamRect ? ` ${R(c.streamRect)}` : ''}, ${c.streamClipOps ?? '?'} clip operation(s) before op #${c.opIndex ?? '?'}`);
+    out.push(`  Text bounds: PDFium ${B(c.textBoxPdfium)}, independent ${B(c.textBoxIndependent)}${c.inkSource ? ` (${c.inkSource})` : ''}${c.candidateBox ? `; planned replacement ${B(c.candidateBox)}` : ''}`);
+  }
+  return out;
+}
+
 function selectObject(objIndex) {
   const d = S.session.doc(S.session.active);
   if (!S.view || !d || S.view.docId !== d.id || S.view.revision !== d.revision) { clearSelectionUi('The page view is stale; reopen the page.'); return; }
@@ -354,7 +367,9 @@ function selectObject(objIndex) {
     `Font size ${r.size}; text matrix [${r.matrix.join(', ')}]; angle ${r.angle} deg${r.skewed ? '; skewed/mirrored' : ''}; scale ${r.scaleX} x ${r.scaleY}`,
     `Bounding box ${r.bounds ? `[${r.bounds.left}, ${r.bounds.bottom}, ${r.bounds.right}, ${r.bounds.top}]` : '-'}; baseline start ${r.baseline ? `(${r.baseline.x}, ${r.baseline.y})` : '-'}; baseline residual ${r.baselineResidual}`,
     `Tc ${r.tc ?? '?'}; Tw ${r.tw ?? '?'}; Tz ${r.tz ?? '?'}; rise ${r.ts ?? '?'}; render mode ${r.renderMode}; operator ${r.op || '?'}${r.tjAdjustments ? ` with ${r.tjAdjustments} TJ adjustment(s)` : ''}`,
-    `Clipping: ${r.clipPaths > 0 ? `${r.clipPaths} PDFium clip path(s)` : 'no PDFium clip path'}, in-stream clip ${r.clipInStream === null ? '?' : r.clipInStream ? 'yes' : 'no'}; marked content ${r.marks.length ? r.marks.map((m) => `/${m.name}${m.keys.length ? `(${m.keys.join(',')})` : ''}`).join(' ') : 'none'}`,
+    `Clipping (Phase 9 signals): ${r.clipPaths > 0 ? `${r.clipPaths} PDFium clip path(s)` : 'no PDFium clip path'}, in-stream clip ${r.clipInStream === null ? '?' : r.clipInStream ? 'yes' : 'no'}; marked content ${r.marks.length ? r.marks.map((m) => `/${m.name}${m.keys.length ? `(${m.keys.join(',')})` : ''}`).join(' ') : 'none'}`,
+    ...clipLines(r.clip),
+    ...(r.countMismatch ? [`Count mismatch: ${r.countMismatch.interpreterGlyphs} glyph(s) vs ${r.countMismatch.pdfiumChars} PDFium character(s); cause ${r.countMismatch.cause}${r.countMismatch.multiCodepointGlyphs ? ` (${r.countMismatch.multiCodepointGlyphs} glyph(s) map to several code points, e.g. a ligature)` : ''}${r.countMismatch.unmappedGlyphs ? `; ${r.countMismatch.unmappedGlyphs} unmapped glyph(s)` : ''}. Still blocked.`] : []),
     ...(r.status === STATUS.SUPPORTED ? ['', 'Why it is currently considered safe:', ...r.why.map((w) => `  - ${w}`)] : []),
   ].join('\n');
   const ul = $('reasons');
@@ -435,6 +450,7 @@ async function applyWith(sel, newText, fit) {
     line($('result'), 'Rejected by verification. The working document was NOT replaced.', false);
   } else if (result.status === 'blocked') {
     line($('result'), `Blocked before mutation (${result.reasons.length} reason(s): ${[...new Set(result.reasons.map((x) => x.code))].join(', ')}). The working document was NOT replaced.`, false);
+    if (result.clip && result.clip.kind !== 'none') $('inspector').textContent += `\n\nThis edit test:\n${clipLines(result.clip).join('\n')}`;
   } else if (result.status === 'stale') {
     line($('result'), `Refused: ${result.reasons[0].detail}. The working document was NOT replaced.`, false);
   } else if (result.status === 'unchanged') {
@@ -555,7 +571,7 @@ window.__phase10Corpus = Object.freeze({
   state: () => ({ ready: S.ready, busy: S.busy, active: S.session.active, generation: S.session.generation, selection: S.session.selection, lastProcessing: S.lastProcessing, log: S.log.slice(),
     docs: S.session.docs.map((d) => ({ id: d.id, name: d.name, sha256: d.sha256, workingSha: d.working.sha, verified: d.working.verified, revision: d.revision, history: d.history.length, edits: d.edits.map((e) => ({ status: e.status, codes: e.codes, failedChecks: e.failedChecks })),
       status: d.report ? d.report.status : null, intake: d.report ? d.report.intake.map((x) => x.code) : [], summary: d.report ? d.report.summary : null, documentReasons: d.report ? d.report.documentReasons.map((x) => x.code) : [] })) }),
-  objects: (id) => { const d = S.session.doc(id); return d && d.report ? d.report.objects.map((o) => ({ page: o.page, objIndex: o.objIndex, status: o.status, codes: o.codes, text: o.text })) : null; },
+  objects: (id) => { const d = S.session.doc(id); return d && d.report ? d.report.objects.map((o) => ({ page: o.page, objIndex: o.objIndex, status: o.status, codes: o.codes, text: o.text, clip: o.clip ? { kind: o.clip.kind, verdict: o.clip.verdict, code: o.clip.code, effectiveRect: o.clip.effectiveRect } : null })) : null; },
   view: () => (S.view ? { docId: S.view.docId, revision: S.view.revision, pageIndex: S.view.pageIndex, records: S.view.records.map((r) => ({ objIndex: r.objIndex, status: r.status, codes: r.codes, text: r.text })) } : null),
   pointFor(text) {
     if (!S.view || !S.view.viewport) return null;

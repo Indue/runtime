@@ -128,7 +128,7 @@ for name in ('deploy-files.txt', 'required-unchanged.txt'):
         phase9_listed |= set(read_list(name))
 for rel in deploy:
     base = rel[len('lab/true-text-edit/'):] if rel.startswith('lab/true-text-edit/') else ''
-    if '/' in base or not (base == 'phase10.css' or base.startswith('phase10-') or base in ('te-corpus.mjs', 'te-corpus-env.mjs')):
+    if '/' in base or not (base == 'phase10.css' or base.startswith('phase10-') or base in ('te-corpus.mjs', 'te-corpus-env.mjs', 'te-corpus-clip.mjs')):
         bad.append(f'{rel}: not a Phase 10-owned name; Phase 10 deploys only files it owns')
     if rel in phase9_listed:
         bad.append(f'{rel}: a Phase 9 list names it; Phase 10 must not deploy a Phase 9 file')

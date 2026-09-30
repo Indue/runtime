@@ -22,6 +22,7 @@ step phase10-phase9-frozen python3 tests/tools/check_phase9_frozen.py
 step phase10-lists python3 tests/tools/build_phase10_package.py --check
 step phase10-refs-host-compat python3 tests/tools/check_phase10_refs.py
 step phase10-node-tests node --test tests/node/phase10-corpus.test.mjs
+step phase10b-clip-tests node --test tests/node/phase10b-clip.test.mjs
 step phase10-deploy-rollback sh tests/tools/phase10_deploy_test.sh
 if [ "${1:-}" != "--no-browser" ]; then
   step phase10-browser python3 tests/harness/run-phase10.py

@@ -33,9 +33,12 @@ What each step proves
                              engine and PDF.js 3.11.174:
                               - all 47 fixtures through the corpus analysis and corpus edit path
                                 reproduce every Phase 9 expectation (22 committed and equal to
-                                the independent references R01..R06, 24 blocked with every
-                                expected reason, 1 rejected with V12); the classification of
-                                each target agrees with the gates the edit met;
+                                the independent references R01..R06, 23 blocked with every
+                                expected reason, 1 rejected with V12) except ONE documented
+                                Phase 10B delta: blocked-clip commits (its clip provably contains
+                                the text; every V check, D01 and K01 pass; the Phase 9 pipeline
+                                still blocks it); the classification of each target agrees with
+                                the gates the edit met;
                               - SetPositions-disabled control through the corpus path: rejected (V05);
                               - supported fixture SUPPORTED with evidence; signed, Form XObject,
                                 Type3, vertical, text rise, clip, optional content, rotation,
@@ -66,6 +69,15 @@ What each step proves
                                 phase10-base.css?v=1 passes; phase8.css (any query) fails;
                               - diffText equals the Phase 9 editor's diff (source extracted from
                                 phase9-editor.js, >1000 pairs); generator family detection.
+  phase10b-clip-tests        node --test tests/node/phase10b-clip.test.mjs on Run #10: clip-geometry
+                             API present; root cause (page clip: Phase 9 boolean blocks, PDFium
+                             reports none); signal disagreement fails closed; region primitives;
+                             brief cases 1-14 (no clip; page/crop clip commits with V01..V13, D01,
+                             K01; cutting clip; crossing candidate blocked before mutation; fit
+                             inside; non-rectangular; nested q/Q; cm; successive W/W*; Form
+                             XObject; Phase 9 blocked-clip; verifier rejection keeps bytes;
+                             redacted export); text clip (Phase 9 gap); Word/LibreOffice/Skia
+                             models; K01 negative; ligature count-mismatch cause.
   phase10-deploy-rollback    deploy/phase10-lab-deploy.sh and rollback against a throwaway app
                              root whose phase8.css is an 826-byte live-style file, NOT the a3f9038
                              build: refusals (corrupted package, te-env.mjs older than a3f9038,
@@ -113,6 +125,11 @@ What each step proves
                                C21 query privacy: ?secret=JaneCitizen, %PDF and fixture-text values,
                                    extra keys, other versions, bad engine nonces, PDF.js queries and
                                    a query seen only via Resource Timing all fail closed
+                               C23 Phase 10B clip in the UI: page clip proven irrelevant, commit
+                                   with V01..V13, D01, K01, X01, D02; a cutting clip blocks; a
+                                   replacement crossing its clip is blocked before mutation
+                               C24 real generator: Chromium prints a PDF during the run; its
+                                   content-area clip no longer blocks text; export has clip facts
                                C22 self-contained styles: the emulated live host serves an
                                    826-byte phase8.css that is not the a3f9038 build (as the real
                                    host does, in every scenario); the page applies exactly

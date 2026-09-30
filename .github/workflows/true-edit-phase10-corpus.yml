@@ -1,8 +1,8 @@
 # NoblePDF True Edit Phase 10 corpus harness CI. Lab only: nothing is deployed.
-# Runs the Phase 10 sequence (tests/run-phase10.sh) on the hash-pinned Run #10 engine: the
+# Runs the Phase 10/10B sequence (tests/run-phase10.sh) on the hash-pinned Run #10 engine: the
 # Phase 9 frozen-file check, deploy lists, page references, Node corpus tests (all 47 Phase 9
-# fixtures through the corpus path), deploy/rollback, the Phase 10 browser harness and the
-# ASCII check. The unchanged Phase 9 sequence runs in true-edit-phase9-lab.yml on the same
+# fixtures through the corpus path), Phase 10B clip-geometry tests, deploy/rollback, the
+# Phase 10 browser harness and the ASCII check. The unchanged Phase 9 sequence runs in true-edit-phase9-lab.yml on the same
 # push. Builds the Phase 10 deploy package as an artifact (download, audit, deploy by hand).
 name: true-edit-phase10-corpus
 on:
@@ -74,6 +74,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: noblepdf-trueedit-phase10-corpus-lab-v1
-          path: ${{ runner.temp }}/phase10-package/noblepdf-trueedit-phase10-corpus-lab-v1.zip
+          name: noblepdf-trueedit-phase10b-corpus-lab-v1
+          path: ${{ runner.temp }}/phase10-package/noblepdf-trueedit-phase10b-corpus-lab-v1.zip
           retention-days: 30
