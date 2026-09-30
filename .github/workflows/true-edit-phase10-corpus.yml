@@ -34,8 +34,25 @@ jobs:
           python-version: '3.12'
       - name: Test dependencies (pdfjs-dist 3.11.174 / 4.10.38 / 6.3.289, @embedpdf/pdfium 2.15.1)
         run: npm install --no-audit --no-fund --prefix tests
+      # The Run #10 engine is cached under a key made of its two pinned SHA-256 values, so CI
+      # does not fetch it from the production host on every run. fetch-engine.sh re-hashes the
+      # cached files and keeps them only if both match the pins; otherwise it downloads again.
+      - name: Engine cache (keyed by the Run #10 pins)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PKG }}/tests/.engine/patched
+          key: noblepdf-run10-engine-c4f54bda9bc730c0-2af28659a83b5691
+      # Up to three attempts: the live host has answered with a connection timeout and once with
+      # bytes that were not the pinned index.js (both refused). Every attempt applies the same
+      # pins; nothing that does not match them is ever kept.
       - name: Patched engine (hash-pinned Run #10)
-        run: sh tests/tools/fetch-engine.sh "${{ vars.PATCHED_ENGINE_BASE_URL || 'https://app.noblepdf.com/vendor/pdfium-2.15.1-setpositions/' }}"
+        run: |
+          for attempt in 1 2 3; do
+            if sh tests/tools/fetch-engine.sh "${{ vars.PATCHED_ENGINE_BASE_URL || 'https://app.noblepdf.com/vendor/pdfium-2.15.1-setpositions/' }}"; then exit 0; fi
+            echo "engine fetch attempt $attempt refused or failed; retrying in 20 s"
+            sleep 20
+          done
+          exit 1
       - name: Playwright Chromium
         run: |
           python -m pip install --upgrade pip
