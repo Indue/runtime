@@ -12,7 +12,11 @@ FAILED=""
 step() {
   name=$1; shift
   printf '%-44s' "$name"
-  if "$@" > "$R/$name.log" 2>&1; then echo PASS; else echo "FAIL (see $R/$name.log)"; FAILED="$FAILED $name"; fi
+  if "$@" > "$R/$name.log" 2>&1; then echo PASS; else
+    echo "FAIL (see $R/$name.log)"; FAILED="$FAILED $name"
+    # CI shows only this output: include the end of the failing log.
+    echo "----- last 150 lines of $R/$name.log -----"; tail -n 150 "$R/$name.log"; echo "----- end of $name -----"
+  fi
 }
 step phase10-phase9-frozen python3 tests/tools/check_phase9_frozen.py
 step phase10-lists python3 tests/tools/build_phase10_package.py --check
