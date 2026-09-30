@@ -47,6 +47,8 @@ n=0
 while read -r want rel; do
   [ -n "$rel" ] || continue
   case "$rel" in lab/true-text-edit/*) ;; *) die "refusing to deploy outside lab/true-text-edit: $rel" ;; esac
+  # The prefix alone is not enough: lab/true-text-edit/../../x resolves outside the lab.
+  case "/$rel/" in */../*|*/./*|*//*) die "refusing path with empty, . or .. segments: $rel" ;; esac
   [ -f "$SRC/$rel" ] || die "package file missing: $rel"
   [ "$(sha_of "$SRC/$rel")" = "$want" ] || die "package file corrupted: $rel"
   n=$((n + 1))

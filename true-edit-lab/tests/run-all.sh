@@ -20,6 +20,7 @@ for v in 3 4 6; do step "node-suite-pdfjs$v" node tests/node/run-suite.mjs --pdf
 step faults node tests/node/faults.mjs --json "$R/faults.json"
 for v in 3 4 6; do step "thresholds-pdfjs$v" node tests/node/thresholds.mjs --pdfjs "$v" --json "$R/thresholds-pdfjs$v.json"; done
 step fixture-manifest python3 tests/tools/verify_manifest.py
+step deploy-rollback sh tests/tools/deploy_test.sh
 if [ "${1:-}" != "--no-browser" ]; then
   step v2-harness-matrix python3 tests/harness/run-matrix.py
   step phase9-browser python3 tests/harness/run-phase9.py

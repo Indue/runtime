@@ -21,10 +21,25 @@ echo "NoblePDF True Edit lab rollback - $( [ "$APPLY" = 1 ] && echo APPLY || ech
 echo "Backup:   $BK"
 echo "App root: $APP_ROOT"
 [ -d "$APP_ROOT" ] || { echo "STOP: app root not found" >&2; exit 1; }
+# Every path the rollback writes or removes must be a plain path under lab/true-text-edit/,
+# whatever the backup folder says (it is not trusted blindly).
+for list in replaced.txt created.txt created-dirs.txt; do
+  [ -f "$BK/$list" ] || { echo "STOP: $BK/$list missing" >&2; exit 1; }
+  while read -r rel; do
+    [ -n "$rel" ] || continue
+    case "$rel" in lab/true-text-edit/*) ;; *) echo "STOP: $list names a path outside lab/true-text-edit: $rel" >&2; exit 1 ;; esac
+    case "/$rel/" in */../*|*/./*|*//*) echo "STOP: $list names a path with empty, . or .. segments: $rel" >&2; exit 1 ;; esac
+  done < "$BK/$list"
+done
 while read -r want rel; do
   [ -n "$rel" ] || continue
+  grep -qxF "$rel" "$BK/replaced.txt" || { echo "STOP: backup.sha256 lists a file the deploy did not replace: $rel" >&2; exit 1; }
   [ -f "$BK/files/$rel" ] && [ "$(sha_of "$BK/files/$rel")" = "$want" ] || { echo "STOP: backup copy missing or damaged: $rel" >&2; exit 1; }
 done < "$BK/backup.sha256"
+while read -r rel; do
+  [ -n "$rel" ] || continue
+  cut -d' ' -f2- "$BK/backup.sha256" | grep -qxF "$rel" || { echo "STOP: replaced file has no hash-checked backup copy: $rel" >&2; exit 1; }
+done < "$BK/replaced.txt"
 echo "Backup copies verified ($(wc -l < "$BK/backup.sha256" | tr -d ' ') file(s))."
 for pass in html other; do
   while read -r rel; do

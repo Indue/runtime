@@ -26,6 +26,9 @@ What each step proves
                            the gap policy must sit inside every measured interval; shows that the
                            old fixed limits were unsafe.
   fixture-manifest         fixture hashes and the manifest pin in the pages.
+  deploy-rollback          deploy and rollback scripts against a throwaway app root: writes stay
+                           under lab/true-text-edit/, .. paths and tampered backup lists are
+                           refused, rollback restores the tree byte- and mode-identical.
   v2-harness-matrix        V2.1.1 page in Chromium (fake engines, injection, real engine H23,
                            unpinned stock H24). V1 scenarios run only when V1_LAB_DIR is set.
   phase9-browser           Phase 9 suite page (S01..S06) and editor (E01..E06) in Chromium with
