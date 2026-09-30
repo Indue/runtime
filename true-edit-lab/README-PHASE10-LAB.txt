@@ -114,4 +114,8 @@ B. Live test (desktop Chrome, fresh tab, hard refresh Ctrl+Shift+R)
      files)". Section 7 must still read PASS.
   4. Per document: read section 4 (document report, fonts, pages); in section 5 click text to
      inspect it; try edits on SUPPORTED objects; note verifier rejections.
+     Expected today: in a multi-page document with text on other pages, every edit is
+     "Rejected by verification" with V11 FAIL only (Phase 9 V11 checks stream references of
+     the edited page only; see AUDIT-REPORT-PHASE10.md). That is correct fail-closed
+     behaviour and useful corpus data. Single-page documents are not affected.
   5. Export corpus report (JSON) and send it back (defaults contain no text or file names).

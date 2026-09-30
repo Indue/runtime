@@ -12,7 +12,7 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { loadEngine } from './lib/engine-node.mjs';
 import { pdfjsProvider } from './lib/pdfjs-node.mjs';
-import { multipagePdf, incrementalPdf, xrefStreamPdf, malformedPdf, notPdf, passwordPdf } from './lib/phase10-inputs.mjs';
+import { multipagePdf, multipageGraphicsPdf, incrementalPdf, xrefStreamPdf, malformedPdf, notPdf, passwordPdf } from './lib/phase10-inputs.mjs';
 import { analyzeDocument, classifyPage, runVerifiedEdit, documentInvariantCheck, CorpusSession, buildExport, sessionSummary, editRecord, diffText, generatorFamily, redactSample, failedReport, STATUS } from '../../public_html/app.noblepdf.com/lab/true-text-edit/te-corpus.mjs?v=1';
 import { analyze, findTextObject, findInObject } from '../../public_html/app.noblepdf.com/lab/true-text-edit/te-pipeline.mjs?v=1';
 import { compareWithReference } from '../../public_html/app.noblepdf.com/lab/true-text-edit/te-suite.mjs?v=1';
@@ -299,7 +299,7 @@ test('malformed, non-PDF, password-protected and oversized inputs fail closed', 
 });
 
 // ------------------------------------------------------------------ real-world structures
-test('multi-page document: per-page classification, rotated page blocked, edit on page 2 commits and D01 proves the other pages unchanged', async () => {
+test('multi-page document with text on other pages: per-page classification; an edit is REJECTED by Phase 9 V11 (page-scoped), never committed; D01 compares the other pages', async () => {
   const bytes = multipagePdf();
   const rep = await analyzeDocument(E, bytes, { pdfjs });
   assert.equal(rep.summary.pages, 3);
@@ -309,15 +309,36 @@ test('multi-page document: per-page classification, rotated page blocked, edit o
   assert.equal(objByText(rep, 'Rotated page text', 2).status, STATUS.BLOCKED);
   const o = objByText(rep, 'Reference code ABC-123', 1);
   assert.equal(o.status, STATUS.SUPPORTED);
+  // D01 on independently built variants: only page 2 differs.
+  const variant = multipagePdf('XYZ-98765');
+  const pos = documentInvariantCheck(E, bytes, variant, 1);
+  assert.ok(pos.pass && /2 other page\(s\) identical/.test(pos.evidence), pos.evidence);
+  const neg = documentInvariantCheck(E, bytes, variant, 0);
+  assert.equal(neg.pass, false);
+  assert.match(neg.evidence, /page 2 changed/);
   if (!EDITS) return;
+  // Phase 9 V11 builds its reference set from the edited page only, so the text streams of
+  // the other pages count as unreferenced: the edit fails closed. Phase 10 must not relax it.
+  const r = await runVerifiedEdit(E, bytes, { pageIndex: 1, objIndex: o.objIndex, expectedOldText: o.text, newText: 'Reference code XYZ-98765', pdfjs });
+  assert.equal(r.status, 'rejected');
+  assert.deepEqual(r.checks.filter((c) => !c.pass).map((c) => c.id), ['V11']);
+  assert.match(r.checks.find((c) => c.id === 'V11').evidence, /orphan text streams \[\d+,\d+\]/);
+  assert.ok(r.checks.find((c) => c.id === 'D01').pass);
+  assert.equal(r.bytes, null);
+  assert.equal(await sha256Hex(bytes), await sha256Hex(multipagePdf()), 'source bytes unchanged');
+});
+
+test('multi-page document whose other pages hold no text: an edit on page 2 commits and D01 proves both other pages unchanged', needEdits, async () => {
+  const bytes = multipageGraphicsPdf();
+  const rep = await analyzeDocument(E, bytes, { pdfjs });
+  assert.equal(rep.summary.pages, 3);
+  const o = objByText(rep, 'Reference code ABC-123', 1);
+  assert.equal(o.status, STATUS.SUPPORTED);
   const r = await runVerifiedEdit(E, bytes, { pageIndex: 1, objIndex: o.objIndex, expectedOldText: o.text, newText: 'Reference code XYZ-98765', pdfjs });
   assert.equal(r.status, 'committed', JSON.stringify(r.reasons));
   const d01 = r.checks.find((c) => c.id === 'D01');
   assert.ok(d01.pass && /2 other page\(s\) identical/.test(d01.evidence), d01.evidence);
-  // D01 must fail when another page did change: compare against page 0 of the edited output.
-  const neg = documentInvariantCheck(E, bytes, r.bytes, 0);
-  assert.equal(neg.pass, false);
-  assert.match(neg.evidence, /page 2 changed/);
+  assert.ok(analyzeStructure(r.bytes, bytes).singleRevision);
 });
 
 test('incremental update and cross-reference stream documents are detected and still edit into one clean revision', async () => {

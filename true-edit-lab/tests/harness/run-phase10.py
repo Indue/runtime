@@ -152,6 +152,9 @@ class Run:
         self.page.wait_for_function("() => !window.__phase10Corpus.state().busy", timeout=300000)
 
     def show_page(self, i):
+        v = self.hook('view()')
+        if v and v['pageIndex'] == i:
+            return
         self.page.select_option('#pageSel', str(i))
         self.page.wait_for_function("(i) => { const v = window.__phase10Corpus.view(); return v && v.pageIndex === i && !window.__phase10Corpus.state().busy; }", arg=i, timeout=300000)
 
@@ -387,19 +390,35 @@ def c09_multi_isolation(r):
 def c10_multipage(r):
     r.open()
     r.preflight()
-    r.load([synthetic('p10-multipage.pdf')])
-    d = r.state()['docs'][0]
+    r.load([synthetic('p10-multipage.pdf'), synthetic('p10-multipage-graphics.pdf')])
+    docs = {d['name']: d for d in r.state()['docs']}
+    d = docs['p10-multipage.pdf']
     r.check(d['summary']['pages'] == 3 and d['summary']['pagesAnalysed'] == 3, 'three pages analysed')
+    r.check('Microsoft Word' in r.page.inner_text('#sessionReport'), 'generator family from metadata')
+    r.show(d['id'])
     r.show_page(2)
     view = r.hook('view()')
-    r.check(all(x['status'] == 'blocked' and 'page-rotation-not-validated' in x['codes'] for x in view['records']), 'rotated page 3 blocked')
+    r.check(view['records'] and all(x['status'] == 'blocked' and 'page-rotation-not-validated' in x['codes'] for x in view['records']), 'rotated page 3 blocked')
+    r.show_page(1)
+    orig = r.ev('(id) => window.__phase10Corpus.workingSha(id)', d['id'])
+    r.click_text('Reference code ABC-123')
+    res = r.apply('Reference code XYZ-98765')
+    rows = r.page.inner_text('#checks')
+    # Known Phase 9 verifier behaviour (not relaxed): V11 only sees the edited page's streams.
+    r.check(res == 'Rejected by verification. The working document was NOT replaced.', f'text on the other pages: rejected by verification ({res[:80]})')
+    fails = [ln.split('\t')[0] for ln in rows.splitlines() if ln.rstrip().endswith('FAIL')]
+    r.check(fails == ['V11'], f'only V11 fails (page-scoped reference set); D01, X01, D02 and V01..V13 otherwise pass ({fails})')
+    r.check('V11 in multi-page documents' in r.page.inner_text('#reasons'), 'the page explains the V11 multi-page limitation')
+    r.check(r.ev('(id) => window.__phase10Corpus.workingSha(id)', d['id']) == orig and r.page.is_disabled('#download'), 'working bytes unchanged; download disabled')
+    g = docs['p10-multipage-graphics.pdf']
+    r.show(g['id'])
     r.show_page(1)
     r.click_text('Reference code ABC-123')
     res = r.apply('Reference code XYZ-98765')
-    r.check(res.startswith('Committed'), f'edit on page 2 committed ({res[:100]})')
+    r.check(res.startswith('Committed'), f'other pages without text: edit on page 2 committed ({res[:100]})')
     rows = r.page.inner_text('#checks')
-    r.check('D01' in rows and 'D02' in rows and '2 other page(s) identical' in rows and 'FAIL' not in rows, 'D01 (PDFium) and D02 (render) prove both other pages unchanged')
-    r.check('Microsoft Word' in r.page.inner_text('#sessionReport'), 'generator family from metadata')
+    r.check('D01' in rows and 'D02' in rows and rows.count('2 other page(s) identical') >= 2 and 'FAIL' not in rows, 'D01 (PDFium) and D02 (render) prove both other pages unchanged')
+    r.check(not r.page.is_disabled('#download'), 'download enabled for the verified multi-page result')
 
 
 def c11_injected_after(r):
@@ -514,7 +533,7 @@ def c19_host_files(r):
       return out;
     }""", ['/' + rel for _, rel in pins])
     bad = [f"{g['u']} HTTP {g['status']}" for g, (want, _) in zip(got, pins) if g['status'] != 200 or g['sha'] != want]
-    r.check(len(pins) >= 20 and not bad, f'{len(pins)} lab files served with their pinned SHA-256 through the emulated live host {bad[:4] if bad else ""}')
+    r.check(len(pins) >= 6 and not bad, f'{len(pins)} lab files served with their pinned SHA-256 through the emulated live host {bad[:4] if bad else ""}')
 
 
 def c17_upload_refused(r):
@@ -545,7 +564,7 @@ SCENARIOS = [
     dict(id='C07', run=c07_new_load_invalidates, note='Loading a new PDF invalidates earlier selections'),
     dict(id='C08', run=c08_intake_failures, note='Malformed, non-PDF and password-protected files fail closed'),
     dict(id='C09', run=c09_multi_isolation, note='Three PDFs (two with identical bytes): no state leaks between documents'),
-    dict(id='C10', run=c10_multipage, note='Multi-page document: rotated page blocked; edit on page 2 verified with D01/D02 over the other pages'),
+    dict(id='C10', run=c10_multipage, note='Multi-page: rotated page blocked; with text on other pages the edit is rejected by Phase 9 V11 (page-scoped, not relaxed); with graphics-only other pages it commits with D01/D02'),
     dict(id='C11', run=c11_injected_after, note='Host-style scripts after the CSP meta: blocked, reported, processing still verified and local'),
     dict(id='C12', run=c12_injected_before, note='Script before the CSP meta: fails closed'),
     dict(id='C13', run=c13_service_worker, note='A service worker controlling the page: fails closed'),

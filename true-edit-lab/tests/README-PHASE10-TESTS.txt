@@ -39,8 +39,12 @@ What each step proves
                               - three documents (two with identical bytes) cannot leak state;
                               - malformed, non-PDF, user-password and oversized files fail closed;
                                 owner-password encrypted fixture analysed and blocked;
-                              - multi-page: rotated page blocked, page-2 edit commits, D01 proves
-                                the other pages unchanged and fails when one does change;
+                              - multi-page with text on other pages: rotated page blocked; the
+                                page-2 edit is REJECTED by Phase 9 V11 only (page-scoped reference
+                                set; not relaxed); D01 passes on built variants that differ in the
+                                edited page only and fails when another page differs;
+                              - multi-page whose other pages hold no text: the page-2 edit commits
+                                and D01 proves both other pages unchanged;
                               - incremental-update and xref-stream inputs are detected and edit
                                 into one clean revision (V01);
                               - export: no file names, text, reason details or PDF bytes by
@@ -68,7 +72,8 @@ What each step proves
                                C07 new PDF invalidates old selections
                                C08 malformed / non-PDF / password fail closed
                                C09 three PDFs, no state leak
-                               C10 multi-page: D01 + D02 over the other pages
+                               C10 multi-page: V11 rejection with text on other pages (explained
+                                   on the page); commit with D01 + D02 when they hold graphics only
                                C11 host-style scripts after the CSP: blocked, reported, still local
                                C12 script before the CSP: fail closed
                                C13 service worker controlling the page: fail closed

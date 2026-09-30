@@ -444,7 +444,15 @@ async function applyWith(sel, newText, fit) {
   }
   if (outcome !== 'committed' && d.working.sha !== workingBefore) { outcome = 'failed'; disableProcessing('internal error: the working copy changed without a verified commit'); }
   const ul = $('reasons');
-  if (outcome !== 'committed') { ul.textContent = ''; for (const x of result.reasons || []) { const li = document.createElement('li'); li.textContent = `[${x.stage}] ${x.code}: ${x.detail}`; ul.append(li); } }
+  if (outcome !== 'committed') {
+    ul.textContent = '';
+    for (const x of result.reasons || []) { const li = document.createElement('li'); li.textContent = `[${x.stage}] ${x.code}: ${x.detail}`; ul.append(li); }
+    if (result.status === 'rejected' && result.reasons.some((x) => x.code === 'V11') && result.plan && result.plan.analysis.doc.pageCount > 1) {
+      const li = document.createElement('li');
+      li.textContent = '[note] V11 in multi-page documents: the Phase 9 verifier builds its set of referenced streams from the edited page only, so text streams of the other pages count as unreferenced and V11 fails. This is a known verifier limitation; the rejection stands (nothing is relaxed).';
+      ul.append(li);
+    }
+  }
   S.log.push({ doc: d.id, page: sel.pageIndex, obj: sel.objIndex, status: outcome });
   renderSession();
   $('docReport').textContent = documentText(d);

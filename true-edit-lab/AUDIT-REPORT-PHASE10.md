@@ -61,6 +61,25 @@ selections. The original bytes are never written. Download re-hashes the verifie
   server logs every request it receives. No scenario may send a body, a non-GET request, PDF
   bytes or a request through another origin.
 
+## Finding: Phase 9 V11 rejects every edit in a multi-page document with text on other pages
+
+V11 ("no text in unreferenced streams") builds its set of referenced streams from the
+edited page only (`a1.independent.counters.streamRefs`). In a multi-page document, the text
+content streams of the other pages therefore count as "orphan text streams", and V11 fails
+closed on every edit. Everything else passes, including D01, X01 and D02. Evidence:
+
+- `tests/node/phase10-corpus.test.mjs`, test 12: only V11 fails; its evidence lists the other
+  pages' content streams.
+- Browser C10: "Rejected by verification. The working document was NOT replaced.", V11 FAIL.
+
+A multi-page document whose other pages contain no text commits normally (test 13, C10).
+Phase 10 does not change V11. Relaxing a verifier to make real PDFs pass is out of scope.
+The page explains this rejection when it happens. Most real-world PDFs have text on several
+pages, so this finding decides whether multi-page corpus edits can ever commit. A reviewed
+Phase 9 verifier change would be needed. Proposal: compute the reference set over every
+page of the document (plus their forms), keep the edited-page checks exactly as they are,
+and re-run the 47 fixtures.
+
 ## Known limitations
 
 1. Classification covers direct page-level text objects with the three Phase 9 validated font
@@ -84,5 +103,6 @@ selections. The original bytes are never written. Download re-hashes the verifie
    nothing in that configuration.
 8. Service worker *registrations* that do not control the page are reported as warnings.
    Control by a service worker fails the audit.
-9. "Percentage editable" is a diagnostic. It depends on the probe and on the gates, and it
+9. Multi-page documents with text on other pages: every edit is rejected by V11 (see the finding above).
+10. "Percentage editable" is a diagnostic. It depends on the probe and on the gates, and it
    says nothing about visual quality beyond the verifier checks.

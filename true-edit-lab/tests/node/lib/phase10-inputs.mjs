@@ -20,14 +20,26 @@ function classic(objs, trailer, header = '%PDF-1.7\n%\xe2\xe3\xcf\xd3\n') {
   return { text: out, xref: x };
 }
 
-export function multipagePdf() {
+// Three pages with text on every page (page 3 rotated); `ref` changes page 2 only, so two
+// variants differ in exactly one page (used to test D01 without an edit).
+export function multipagePdf(ref = 'ABC-123') {
   const c1 = 'BT /F1 18 Tf 72 700 Td (Page one heading) Tj ET\nBT /F1 12 Tf 72 660 Td (Invoice Number: 12345) Tj ET';
-  const c2 = 'BT /F1 12 Tf 72 700 Td (Second page line) Tj ET\nBT /F1 12 Tf 72 670 Td (Reference code ABC-123) Tj ET';
+  const c2 = `BT /F1 12 Tf 72 700 Td (Second page line) Tj ET\nBT /F1 12 Tf 72 670 Td (Reference code ${ref}) Tj ET`;
   const c3 = 'BT /F1 12 Tf 72 700 Td (Rotated page text) Tj ET';
   const page = (c, extra = '') => `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents ${c} 0 R${extra} >>`;
   const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R] /Count 3 >>', page(4), stream(c1), page(6), stream(c2), page(8, ' /Rotate 90'), stream(c3), HELV,
     '<< /Producer (Microsoft\\256 Word for Microsoft 365) /Creator (Microsoft\\256 Word for Microsoft 365) >>'];
   return bytesOf(classic(objs, '/Root 1 0 R /Info 10 0 R').text);
+}
+
+// Three pages where only page 2 has text; pages 1 and 3 (rotated) hold vector graphics.
+export function multipageGraphicsPdf() {
+  const g1 = '0.2 0.4 0.8 rg 72 560 240 120 re f\n1 w 0 0 0 RG 72 520 m 400 520 l S';
+  const c2 = 'BT /F1 12 Tf 72 700 Td (Second page line) Tj ET\nBT /F1 12 Tf 72 670 Td (Reference code ABC-123) Tj ET';
+  const g3 = '0.8 0.2 0.2 rg 100 100 50 50 re f';
+  const page = (c, extra = '') => `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents ${c} 0 R${extra} >>`;
+  const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R] /Count 3 >>', page(4), stream(g1), page(6), stream(c2), page(8, ' /Rotate 90'), stream(g3), HELV];
+  return bytesOf(classic(objs, '/Root 1 0 R').text);
 }
 
 // A one-page document plus one appended incremental update that replaces the content
@@ -108,6 +120,6 @@ export function passwordPdf(userPw = 'secret', ownerPw = 'owner-secret') {
 }
 
 export const INPUTS = Object.freeze({
-  'p10-multipage.pdf': multipagePdf, 'p10-incremental.pdf': incrementalPdf, 'p10-xref-stream.pdf': xrefStreamPdf,
+  'p10-multipage.pdf': () => multipagePdf(), 'p10-multipage-graphics.pdf': multipageGraphicsPdf, 'p10-incremental.pdf': incrementalPdf, 'p10-xref-stream.pdf': xrefStreamPdf,
   'p10-malformed.pdf': malformedPdf, 'p10-not-a-pdf.pdf': notPdf, 'p10-password.pdf': passwordPdf,
 });
