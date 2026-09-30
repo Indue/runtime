@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-AU" data-phase9="editor-1">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <title>NoblePDF True Edit - Phase 9 interactive editor (lab)</title>
+  <script src="phase8-csp-guard.js?v=1"></script>
+  <link rel="stylesheet" href="phase8.css?v=2">
+  <link rel="stylesheet" href="phase9.css?v=1">
+  <script src="/vendor/pdfjs-3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"></script>
+</head>
+<body>
+<main class="shell">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">NoblePDF engineering lab - Phase 9</p>
+      <h1>True Edit interactive editor (fixtures only)</h1>
+      <p class="lede">Click existing text on a lab fixture, change it, and apply. Each edit is gated, applied with the patched PDFium engine, saved without incremental updates, reopened and verified (text in PDFium and PDF.js, search, geometry of every glyph, untouched objects, object and annotation census, save structure, hidden or orphaned text, and a 288 dpi render comparison). Only a fully verified result replaces the working document; the original stays untouched for Reset.</p>
+    </div>
+    <div class="privacy-badge">Fixture only</div>
+  </header>
+  <section class="card warning-card">
+    <h2>Safety boundary</h2>
+    <p>No user PDF can be opened here until the runtime gates are complete. Unsupported PDFs and text fail closed with a reason; nothing is ever rasterised as a fallback.</p>
+    <div id="privacyStatus" class="status-line">Checking runtime...</div>
+    <div class="button-row"><button id="start" class="primary" type="button">Start lab (verify engine)</button> <span id="engineStatus" class="muted">Engine not loaded.</span></div>
+  </section>
+  <section class="card">
+    <div class="editor-grid">
+      <div>
+        <div class="button-row">
+          <select id="fixture" disabled><option value="">Choose a fixture...</option></select>
+          <button id="undo" class="secondary" type="button" disabled>Undo</button>
+          <button id="reset" class="secondary" type="button" disabled>Reset</button>
+          <button id="download" class="secondary" type="button" disabled>Download verified PDF</button>
+        </div>
+        <p id="docStatus" class="muted small">No document.</p>
+        <div id="pageWrap" class="page-wrap"><canvas id="page"></canvas></div>
+      </div>
+      <div class="edit-panel">
+        <h2>Edit</h2>
+        <p id="hint" class="muted small">Click a line of text on the page.</p>
+        <label for="text">Text object</label>
+        <input id="text" type="text" autocomplete="off" spellcheck="false" disabled>
+        <label><input id="fit" type="checkbox" disabled> Keep the original width (fit over spaces)</label>
+        <div class="button-row"><button id="apply" class="primary" type="button" disabled>Apply edit</button> <button id="suggest" class="secondary" type="button" disabled>Use suggested edit</button></div>
+        <div id="result" class="status-line">-</div>
+        <ul id="reasons" class="reasons small"></ul>
+        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Check</th><th>Result</th></tr></thead><tbody id="checks"></tbody></table></div>
+      </div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Network and script integrity audit</h2>
+    <pre id="networkResults">Checking...</pre>
+  </section>
+  <footer><p>Lab only. The production NoblePDF editor is not modified.</p></footer>
+</main>
+<script type="module" src="phase9-editor.js?v=3"></script>
+</body>
+</html>

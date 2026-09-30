@@ -1,0 +1,49 @@
+PASS  cid-astral                     committed expected committed SetPositions-discriminating yes (0.42 pt)  
+PASS  cid-greek                      committed expected committed SetPositions-discriminating yes (0.56 pt)  
+PASS  euro-winansi                   committed expected committed SetPositions-discriminating yes (0.36 pt)  
+PASS  invoice-billto-spaces-tw       committed expected committed SetPositions-discriminating yes (0.36 pt)  
+PASS  invoice-number-longer          committed expected committed SetPositions-discriminating yes (0.60 pt)  
+PASS  invoice-status-fit             committed expected committed SetPositions-discriminating yes (2.66 pt)  
+PASS  invoice-total-shorter          committed expected committed SetPositions-discriminating yes (0.30 pt)  
+PASS  leading-tj                     committed expected committed SetPositions-discriminating yes (0.36 pt)  
+PASS  one-char-replacement           committed expected committed SetPositions-discriminating yes (0.48 pt)  
+PASS  one-glyph-object               committed expected committed SetPositions-discriminating no             
+PASS  p8-waveskern                   committed expected committed SetPositions-discriminating no             
+PASS  rotated-30                     committed expected committed SetPositions-discriminating yes (0.70 pt)  
+PASS  scaled-tm                      committed expected committed SetPositions-discriminating yes (0.36 pt)  
+PASS  state-tc                       committed expected committed SetPositions-discriminating yes (0.48 pt)  
+PASS  state-tz150                    committed expected committed SetPositions-discriminating yes (0.36 pt)  
+PASS  state-tz80                     committed expected committed SetPositions-discriminating yes (0.36 pt)  
+PASS  std-differences                committed expected committed SetPositions-discriminating yes (0.80 pt)  
+PASS  tagged-mcid                    committed expected committed SetPositions-discriminating yes (0.36 pt)  
+PASS  ttf-astral-tw                  committed expected committed SetPositions-discriminating yes (0.39 pt)  
+PASS  ttf-custom-encoding            committed expected committed SetPositions-discriminating yes (0.52 pt)  
+PASS  ttf-winansi-nonascii           committed expected committed SetPositions-discriminating yes (0.42 pt)  
+PASS  untouched-mix                  committed expected committed SetPositions-discriminating yes (0.48 pt)  
+PASS  blocked-actualtext             blocked   expected blocked   SetPositions-discriminating n/a            marked-content-ambiguous,marked-content-actualtext,unicode-mapping-disagreement,engine-interpreter-position-disagreement,original-extraction-inconsistent-pdfjs
+PASS  blocked-clip                   blocked   expected blocked   SetPositions-discriminating n/a            target-clipped
+PASS  blocked-collision              blocked   expected blocked   SetPositions-discriminating n/a            collision-with-neighbour
+PASS  blocked-encrypted-restricted   blocked   expected blocked   SetPositions-discriminating n/a            encrypted-document,permissions-restrict-modify,independent-reader-unavailable,object-mapping-failed,target-unmapped
+PASS  blocked-form-xobject           blocked   expected blocked   SetPositions-discriminating n/a            text-in-form-xobject
+PASS  blocked-glyph-missing          blocked   expected blocked   SetPositions-discriminating n/a            glyph-not-in-font-subset,glyph-not-in-font-subset,glyph-not-in-font-subset,glyph-not-in-font-subset,glyph-not-in-font-subset,glyph-not-in-font-subset
+PASS  blocked-image-only             blocked   expected blocked   SetPositions-discriminating n/a            no-editable-text
+PASS  blocked-no-unicode-map         blocked   expected blocked   SetPositions-discriminating n/a            font-no-unicode-map
+PASS  blocked-ocr-invisible          blocked   expected blocked   SetPositions-discriminating n/a            no-editable-text,invisible-text
+PASS  blocked-optional-content       blocked   expected blocked   SetPositions-discriminating n/a            marked-content-ambiguous,optional-content
+PASS  blocked-page-rotate            blocked   expected blocked   SetPositions-discriminating n/a            page-rotation-not-validated
+PASS  blocked-shared-content         blocked   expected blocked   SetPositions-discriminating n/a            shared-content-stream
+PASS  blocked-signed                 blocked   expected blocked   SetPositions-discriminating n/a            signed-document
+PASS  blocked-std14-no-widths-euro   blocked   expected blocked   SetPositions-discriminating n/a            metrics-disagree
+PASS  blocked-text-rise              blocked   expected blocked   SetPositions-discriminating n/a            text-rise-not-validated
+PASS  blocked-tracked-text           blocked   expected blocked   SetPositions-discriminating n/a            tracked-text,original-extraction-inconsistent-pdfjs
+PASS  blocked-type3                  blocked   expected blocked   SetPositions-discriminating n/a            font-type3
+PASS  blocked-vertical               blocked   expected blocked   SetPositions-discriminating n/a            first-glyph-not-at-origin,baseline-not-horizontal,font-vertical
+PASS  input-combining                blocked   expected blocked   SetPositions-discriminating n/a            combining-mark-unsupported
+PASS  input-empty                    blocked   expected blocked   SetPositions-discriminating n/a            empty-replacement
+PASS  input-line-break               blocked   expected blocked   SetPositions-discriminating n/a            line-break-unsupported
+PASS  input-lone-surrogate           blocked   expected blocked   SetPositions-discriminating n/a            invalid-unicode
+PASS  input-rtl                      blocked   expected blocked   SetPositions-discriminating n/a            rtl-unsupported
+PASS  input-zwj                      blocked   expected blocked   SetPositions-discriminating n/a            format-character-unsupported
+PASS  rejected-untouched-grouping    rejected  expected rejected  SetPositions-discriminating no             V12
+
+47/47 fixtures matched their expectation (PDF.js 4.10.38, engine Run #10)

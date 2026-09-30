@@ -1,0 +1,13 @@
+S01 OK         suite  ready=YES suite=pass matched=47/47 62.1s 
+S02 OK         suite  ready=YES suite=None matched=None 0.5s 
+S03 OK         suite  ready=NO suite=None matched=None 0.4s 
+S04 OK         suite  ready=NO suite=None matched=None 0.4s 
+S05 OK         suite  ready=NO suite=None matched=None 0.4s 
+S06 OK         suite  ready=YES suite=None matched=None 0.5s 
+E01 OK         editor steps=14/14 8.2s 
+E02 OK         editor steps=16/16 12.5s 
+E03 OK         editor steps=17/17 4.6s 
+E04 OK         editor steps=4/4 2.2s 
+E05 OK         editor steps=3/3 1.3s 
+E06 OK         editor steps=8/8 5.4s 
+PHASE 9 BROWSER OK

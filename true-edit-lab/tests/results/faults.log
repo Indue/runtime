@@ -1,0 +1,34 @@
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken: "Error: Cannot find module 'canvas'
+Require stack:
+- /home/claude/v3/pkg/tests/node_modules/pdfjs3/legacy/build/pdf.js
+- /home/claude/v3/pkg/tests/node/lib/pdfjs-node.mjs".
+Warning: Cannot polyfill `Path2D`, rendering may be broken: "Error: Cannot find module 'canvas'
+Require stack:
+- /home/claude/v3/pkg/tests/node_modules/pdfjs3/legacy/build/pdf.js
+- /home/claude/v3/pkg/tests/node/lib/pdfjs-node.mjs".
+PASS  FI-01  SetPositions is a no-op (stock engine or broken patch)
+      discriminating fixtures 20, rejected 20, not discriminating (not counted) 2, caught by V05,V08
+PASS  FI-02  legacy F15: SetPositions called with count 0 for one-glyph results
+      discriminating fixtures 1, rejected 1, not discriminating (not counted) 21, caught by engine-refused
+PASS  FI-03  legacy F7: character codes taken from Unicode (code == Unicode assumption)
+      discriminating fixtures 7, rejected 7, not discriminating (not counted) 15, caught by V03,V04,V08,V10,V12,V13,V07,V05
+PASS  FI-04  legacy F9: Run #10 layout with UTF-16 string indexing
+      discriminating fixtures 1, rejected 1, not discriminating (not counted) 21, caught by V05,V08
+PASS  FT-01  incremental update appended (second revision, /Prev)
+      discriminating fixtures 22, rejected 22, not discriminating (not counted) 0, caught by V01
+PASS  FT-02  unreferenced stream carrying the old text
+      discriminating fixtures 22, rejected 22, not discriminating (not counted) 0, caught by V11
+PASS  FT-03  hidden copy of the old text (render mode 3) added to the page
+      discriminating fixtures 22, rejected 22, not discriminating (not counted) 0, caught by V02,V03,V04,V08,V10,V11,V12,V07
+PASS  FT-04  white rectangle overlay on the edit area
+      discriminating fixtures 22, rejected 22, not discriminating (not counted) 0, caught by V02,V04
+PASS  FT-05  image overlay (raster substitute)
+      discriminating fixtures 22, rejected 22, not discriminating (not counted) 0, caught by V02,V04,V09
+PASS  FT-06  an untouched text object moved by 0.5 pt
+      discriminating fixtures 15, rejected 15, not discriminating (not counted) 7, caught by V06,V08
+PASS  FT-07  target text silently different (one code changed)
+      discriminating fixtures 21, rejected 21, not discriminating (not counted) 1, caught by V03,V04,V08,V10,V12,V13,V07
+PASS  FT-08  kerning of untouched objects dropped (stock-generator behaviour)
+      discriminating fixtures 6, rejected 6, not discriminating (not counted) 16, caught by V06,V08
+
+12/12 fault classes caught on every discriminating fixture

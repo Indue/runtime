@@ -1,0 +1,16 @@
+PASS  base                     PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: false
+PASS  tz50-regenerated         PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: false
+PASS  tz100-regenerated        PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: false
+PASS  tz150-regenerated        PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: false
+INFO  tz50-original-operator   PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.2041 / -0.4001   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: false
+INFO  tz150-original-operator  PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.0681 / -0.1335   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: true
+PASS  tc+0.05em                PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.052 / -0.25   policy [-0.23, 0.032]   old lint accepted [-0.15, 0.045] unsafe: false
+PASS  tc-0.05em                PDFium +0.1891 / none>=-1   PDF.js 4.10.38 +0.1521 / -0.1501   policy [-0.13, 0.132]   old lint accepted [-0.15, 0.08] unsafe: false
+PASS  narrow-space-160         PDFium +0.0801 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.06]   old lint accepted [-0.15, 0.08] unsafe: false
+PASS  narrow-space-100         PDFium +0.0501 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.03]   old lint accepted [-0.15, 0.08] unsafe: true
+PASS  rotated-30               PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: false
+PASS  rotated-90               PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: false
+PASS  scaled-tm-2x-9pt         PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: false
+PASS  scaled-cm-0.5            PDFium +0.139 / none>=-1   PDF.js 4.10.38 +0.1021 / -0.2002   policy [-0.18, 0.082]   old lint accepted [-0.15, 0.08] unsafe: false
+
+12 configurations verified safe, 2 informational (pre-regeneration Tz operator form), legacy limits unsafe in 2

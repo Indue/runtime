@@ -1,0 +1,12 @@
+{
+  "name": "noblepdf-true-edit-phase9-lab-tests",
+  "private": true,
+  "type": "module",
+  "description": "Test and harness dependencies for the True Edit Phase 8 V2.1.1 and Phase 9 lab. Not deployable.",
+  "devDependencies": {
+    "@embedpdf/pdfium": "2.15.1",
+    "pdfjs3": "npm:pdfjs-dist@3.11.174",
+    "pdfjs4": "npm:pdfjs-dist@4.10.38",
+    "pdfjs-dist": "6.3.289"
+  }
+}

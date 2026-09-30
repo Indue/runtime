@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: engine is the pinned Run \#10 build with the SetPositions export
+ok 1 - engine is the pinned Run \#10 build with the SetPositions export
+  ---
+  duration_ms: 1.459095
+  type: 'test'
+  ...
+# Subtest: one-glyph object: count 0 is rejected with and without a pointer; the lab skips the call
+ok 2 - one-glyph object: count 0 is rejected with and without a pointer; the lab skips the call
+  ---
+  duration_ms: 31.963826
+  type: 'test'
+  ...
+# Subtest: count mismatch, NaN and Infinity are rejected
+ok 3 - count mismatch, NaN and Infinity are rejected
+  ---
+  duration_ms: 2.39543
+  type: 'test'
+  ...
+# Subtest: decreasing and negative positions are ACCEPTED by the engine, so the lab must refuse them
+ok 4 - decreasing and negative positions are ACCEPTED by the engine, so the lab must refuse them
+  ---
+  duration_ms: 1.418175
+  type: 'test'
+  ...
+# Subtest: positions are honoured exactly (a +1 pt move of glyph 3 survives save and reopen)
+ok 5 - positions are honoured exactly (a +1 pt move of glyph 3 survives save and reopen)
+  ---
+  duration_ms: 4.284307
+  type: 'test'
+  ...
+# Subtest: identity round trip: SetCharcodes(same) + SetPositions(xs) moves nothing
+ok 6 - identity round trip: SetCharcodes(same) + SetPositions(xs) moves nothing
+  ---
+  duration_ms: 3.727907
+  type: 'test'
+  ...
+# Subtest: leading TJ offset is folded into the object matrix; glyph 0 is at object-space 0
+ok 7 - leading TJ offset is folded into the object matrix; glyph 0 is at object-space 0
+  ---
+  duration_ms: 0.215417
+  type: 'test'
+  ...
+# Subtest: Tz is part of the object matrix, so object-space positions are unscaled
+ok 8 - Tz is part of the object matrix, so object-space positions are unscaled
+  ---
+  duration_ms: 0.123901
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 210.468716

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en-AU" data-phase9="suite-1">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <title>NoblePDF True Edit - Phase 9 fixture suite (lab)</title>
+  <script src="phase8-csp-guard.js?v=1"></script>
+  <link rel="stylesheet" href="phase8.css?v=2">
+  <link rel="stylesheet" href="phase9.css?v=1">
+  <script src="/vendor/pdfjs-3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"></script>
+</head>
+<body>
+<main class="shell">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">NoblePDF engineering lab - Phase 9</p>
+      <h1>True Edit fixture suite (real browser, real engine)</h1>
+      <p class="lede">Runs every Phase 9 fixture through the same analysis, gating, mutation and verification code the interactive editor uses, on the hash-pinned Run #10 engine and the pinned PDF.js 3.11.174. Supported fixtures must commit and match an independently generated reference PDF (text, glyph geometry and 288 dpi rendering); blocked fixtures must fail closed for the expected reason. Fixture PDFs only: nothing is uploaded and nothing leaves this browser.</p>
+    </div>
+    <div class="privacy-badge">Fixture only</div>
+  </header>
+  <section class="card warning-card">
+    <h2>Safety boundary</h2>
+    <p>No user PDF can be loaded. This page does not change the production editor or any vendor folder. The suite refuses to run if a cross-origin resource loads, if any unexpected script may have executed, if eval is not blocked, or if the engine, PDF.js or fixture bytes differ from their pins.</p>
+    <div id="privacyStatus" class="status-line">Checking runtime...</div>
+  </section>
+  <section class="card">
+    <div class="section-head">
+      <div><h2>1. Engine preflight</h2><p class="muted">The patched engine must match Run #10 by SHA-256 before its code runs, and must expose every API the pipeline calls.</p></div>
+      <button id="runPreflight" class="primary" type="button">Run preflight</button>
+    </div>
+    <div class="summary-grid">
+      <div><span>Engine identity</span><strong id="identityStatus">-</strong></div>
+      <div><span>API surface</span><strong id="apiStatus">-</strong></div>
+      <div><span>Fixtures</span><strong id="fixtureStatus">-</strong></div>
+      <div><span>Ready</span><strong id="readyStatus">NO</strong></div>
+    </div>
+    <pre id="preflightReport">Not run.</pre>
+  </section>
+  <section class="card good-note">
+    <div class="section-head">
+      <div><h2>2. Run the suite</h2><p class="muted">About two minutes. Rendering comparisons run at 288 dpi around each edit and at 144 dpi over the full page.</p></div>
+      <button id="runSuite" class="primary" type="button" disabled>Run fixture suite</button>
+    </div>
+    <div class="summary-grid">
+      <div><span>Matched expectation</span><strong id="matchedStatus">-</strong></div>
+      <div><span>Committed (verified)</span><strong id="committedStatus">-</strong></div>
+      <div><span>Failed closed as expected</span><strong id="blockedStatus">-</strong></div>
+      <div><span>Suite decision (fixtures only)</span><strong id="decisionStatus">-</strong></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fixture</th><th>Expected</th><th>Observed</th><th>SetPositions discriminating</th><th>Render</th><th>Result</th><th>Evidence</th></tr></thead>
+        <tbody id="suiteBody"><tr><td colspan="7">Run the preflight first.</td></tr></tbody>
+      </table>
+    </div>
+    <pre id="suiteReport">Not run.</pre>
+    <div class="button-row"><button id="copyReport" class="secondary" type="button" disabled>Copy report</button></div>
+  </section>
+  <section class="card">
+    <h2>3. Network and script integrity audit</h2>
+    <pre id="networkResults">Checking...</pre>
+  </section>
+  <footer><p>Phase 9 is an isolated engineering lab. Passing here covers these fixtures only and does not authorise production integration.</p></footer>
+</main>
+<script type="module" src="phase9-suite.js?v=3"></script>
+</body>
+</html>

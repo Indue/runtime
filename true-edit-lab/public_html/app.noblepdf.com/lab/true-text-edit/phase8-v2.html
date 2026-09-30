@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en-AU" data-phase8="v2">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <title>NoblePDF True Edit - Phase 8 live mutation proof V2.1.1 (lab)</title>
+  <script src="phase8-csp-guard.js?v=1"></script>
+  <link rel="stylesheet" href="phase8.css?v=2">
+  <script src="/vendor/pdfjs-3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"></script>
+</head>
+<body>
+<main class="shell">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">NoblePDF engineering lab - V2.1.1 (stock engine pinned, PDF.js SRI)</p>
+      <h1>True Edit Phase 8: one-fixture live SetPositions proof</h1>
+      <p class="lede">Browser check of the patched PDFium 2.15.1 engine on a single deterministic fixture (WAVESKERN -&gt; TOKYOLAKE, standard Helvetica, WinAnsi, ASCII). The engines are identified by SHA-256, the rejected legacy layout is used as a gated control that proves SetPositions actually moves glyphs, and the Run #10 anchored layout is checked with exact extraction, search, geometry, render and save-structure gates. A pass here covers this fixture only. It is not evidence that arbitrary user PDFs, fonts or Unicode text are production-ready.</p>
+    </div>
+    <div class="privacy-badge">Fixture only</div>
+  </header>
+
+  <section class="card warning-card">
+    <h2>Safety boundary</h2>
+    <p>No user PDF can be loaded. This page mutates only a deterministic, hash-pinned test fixture in browser memory. It does not change production editor files or either PDFium vendor folder. The proof is refused if any cross-origin resource loads or any unexpected script runs on this page.</p>
+    <div id="privacyStatus" class="status-line">Checking runtime...</div>
+  </section>
+
+  <section class="card">
+    <h2>What this proof does not exercise</h2>
+    <p class="muted">For this fixture the unchanged prefix and suffix are empty (prefix 0, suffix 0), the replacement has the same length (9 glyphs), width fitting is off, Tc and Tw are 0, Tz is 100, the font is non-embedded standard Helvetica with WinAnsi encoding and the text is ASCII A-Z. Prefix anchoring, suffix shifting, width fitting, Tc/Tw/Tz, embedded TrueType, CID fonts, non-ASCII text, length changes and regeneration of untouched objects that carry kerning or Tc/Tw are covered only by the Run #10 CI suite, not by this page.</p>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <div>
+        <h2>1. Engine preflight</h2>
+        <p class="muted">Patched engine files must match the Run #10 SHA-256 values before any of their code runs. The stock engine is hashed and must not expose <span class="code-note">FPDFText_SetPositions()</span>.</p>
+      </div>
+      <button id="runPreflight" class="primary" type="button">Run V2 preflight</button>
+    </div>
+    <div class="summary-grid">
+      <div><span>Engine identity</span><strong id="identityStatus">-</strong></div>
+      <div><span>Stock engine</span><strong id="stockStatus">-</strong></div>
+      <div><span>SetPositions</span><strong id="setPositionsStatus">-</strong></div>
+      <div><span>Ready</span><strong id="readyStatus">NO</strong></div>
+    </div>
+    <pre id="preflightReport">Not run.</pre>
+  </section>
+
+  <section class="card good-note">
+    <div class="section-head">
+      <div>
+        <h2>2. Run the live mutation proof</h2>
+        <p class="muted"><strong>Before:</strong> WAVESKERN &nbsp; -&gt; &nbsp; <strong>After:</strong> TOKYOLAKE</p>
+        <p class="muted">The legacy strategy keeps every old glyph origin. It must be rejected by the gap lint and it must fail extraction, and its saved glyph positions must match the requested positions: that is the evidence that SetPositions really moves glyphs, because for this fixture the anchored layout equals the natural layout that SetCharcodes alone already produces.</p>
+      </div>
+      <button id="runProof" class="primary" type="button" disabled>Run V2 live proof</button>
+    </div>
+    <div class="strategy-grid">
+      <div><span>Legacy control (must fail as designed)</span><strong id="legacyStatus">NOT RUN</strong></div>
+      <div><span>Run #10 anchored layout</span><strong id="anchoredStatus">NOT RUN</strong></div>
+      <div><span>Lab decision (this fixture only)</span><strong id="decisionStatus">-</strong></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>3. Verification gates</h2>
+    <p class="muted">Every row marked GATE must pass. Rows marked INFO are recorded evidence and never turn a failure into a pass.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Group</th><th>Check</th><th>Result</th><th>Evidence</th></tr></thead>
+        <tbody id="gatesBody"><tr><td colspan="5">Run the preflight and the proof first.</td></tr></tbody>
+      </table>
+    </div>
+    <pre id="verificationReport">Not run.</pre>
+    <div class="button-row">
+      <button id="copyReport" class="secondary" type="button" disabled>Copy report</button>
+      <button id="downloadResult" class="secondary" type="button" disabled>Download anchored output PDF</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>4. Render comparison (PDF.js 3.11.174, scale 2 display)</h2>
+    <div class="render-grid four">
+      <figure><figcaption>Original TJ fixture</figcaption><canvas id="beforeCanvas"></canvas></figure>
+      <figure><figcaption>Legacy control (preserved origins)</figcaption><canvas id="legacyCanvas"></canvas></figure>
+      <figure><figcaption>Run #10 anchored layout</figcaption><canvas id="anchoredCanvas"></canvas></figure>
+      <figure><figcaption>Independent reference</figcaption><canvas id="referenceCanvas"></canvas></figure>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>5. Network and script integrity audit</h2>
+    <p class="muted">Resource Timing lists what loaded. The early CSP recorder lists what the policy blocked. Any loaded cross-origin resource or any unexpected script that ran keeps the lab decision blocked.</p>
+    <pre id="networkResults">Checking...</pre>
+  </section>
+
+  <footer><p>Phase 8 V2 is an isolated engineering proof for one fixture. Passing here does not modify the production NoblePDF editor and does not authorise production integration.</p></footer>
+</main>
+<script type="module" src="phase8-v2.js?v=2"></script>
+</body>
+</html>
