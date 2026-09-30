@@ -7,7 +7,26 @@
 import { sha256Hex } from './phase8-verify.mjs?v=1';
 import { PDFJS_PIN } from './te-render.mjs?v=1';
 
-export const TE_ENV_VERSION = 'te-env-1';
+export const TE_ENV_VERSION = 'te-env-2';
+
+// Resource Timing keeps only 250 entries by default and silently drops the rest; a suite
+// run loads far more, so every later request would be missing from the audit (seen live:
+// exactly 250 entries, nothing after the 16th fixture). The buffer is enlarged and a
+// PerformanceObserver, which the buffer limit does not affect, records every entry from
+// module start (buffered: true also delivers the entries loaded before). If neither can
+// guarantee a complete list, the audit fails.
+const RT = { entries: [], observer: null, overflow: false };
+try { performance.setResourceTimingBufferSize(100000); } catch (e) { /* the observer below does not need it */ }
+try { performance.addEventListener('resourcetimingbufferfull', () => { RT.overflow = true; }); } catch (e) { /* older browsers */ }
+try {
+  RT.observer = new PerformanceObserver((list) => { RT.entries.push(...list.getEntries()); });
+  RT.observer.observe({ type: 'resource', buffered: true });
+} catch (e) { RT.observer = null; }
+function resourceEntries() {
+  if (!RT.observer) return performance.getEntriesByType('resource');
+  RT.entries.push(...RT.observer.takeRecords()); // entries not yet delivered to the callback
+  return RT.entries.slice();
+}
 
 export async function environmentAudit({ expectedScripts }) {
   const out = { pass: true, fail: [], warn: [], lines: [], checks: [] };
@@ -40,7 +59,8 @@ export async function environmentAudit({ expectedScripts }) {
   }
   if (inlineUnexpected > inlineViolations) out.fail.push(`${inlineUnexpected} unexpected inline script(s) but only ${inlineViolations} inline CSP violation(s): at least one may have executed`);
   else if (inlineUnexpected) out.warn.push(`${inlineUnexpected} unexpected inline script(s) after the CSP element, each matched by a recorded CSP violation (blocked)`);
-  const resources = performance.getEntriesByType('resource').map((e) => {
+  if (!RT.observer && RT.overflow) out.fail.push('Resource Timing buffer overflowed and PerformanceObserver is unavailable: the network audit cannot see every request');
+  const resources = resourceEntries().map((e) => {
     let origin = '(invalid)';
     try { origin = new URL(e.name, location.href).origin; } catch (err) { /* invalid */ }
     return { name: e.name, origin, type: e.initiatorType || '' };
@@ -75,7 +95,7 @@ export async function environmentAudit({ expectedScripts }) {
   out.violations = violations.length;
   out.lines = [
     `Origin: ${location.origin}`,
-    `Resource Timing entries: ${resources.length} (cross-origin ${resources.filter((x) => x.origin !== location.origin).length})`,
+    `Resource Timing entries: ${resources.length} (cross-origin ${resources.filter((x) => x.origin !== location.origin).length}; ${RT.observer ? 'complete: PerformanceObserver since module start' : 'buffer only'}${RT.overflow ? '; buffer overflowed' : ''})`,
     `CSP-blocked attempts recorded: ${violations.length}`,
     `eval blocked by CSP: ${evalBlocked ? 'yes' : 'NO'}`,
     `PDF.js ${lib ? lib.version : 'missing'}; pdf.min.js ${libSha.slice(0, 12)}; worker ${workerSha.slice(0, 12)}; SRI attribute ${tag && tag.getAttribute('integrity') === PDFJS_PIN.libSri ? 'present' : 'MISSING'}; getDocument forces isEvalSupported=false`,

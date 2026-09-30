@@ -8,7 +8,7 @@ import { loadVerifiedEngine, RUN10, OBJ } from './te-engine.mjs?v=1';
 import { analyze, targetGates, documentGates, planEdit, applyEdit, verifyEdit, findTextObject } from './te-pipeline.mjs?v=1';
 import { toCodePoints, fromCodePoints } from './te-edit.mjs?v=1';
 import { pdfjsLib, browserPdfjs, renderToCanvas, compareRenders, grow, union, PDFJS_PIN } from './te-render.mjs?v=1';
-import { environmentAudit } from './te-env.mjs?v=1';
+import { environmentAudit } from './te-env.mjs?v=2';
 import { sha256Hex } from './phase8-verify.mjs?v=1';
 
 const PAGE_VERSION = 'phase9-editor-1';

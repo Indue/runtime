@@ -50,13 +50,17 @@ function fakeWasm() {
 }
 const FAKE_WASM = fakeWasm();
 
-const scenario = { engine: 'emulated', subst: '0', inject: 'none', pdfjs: 'ok', stock: 'pinned', host: 'live', tamper: 'none' };
+const scenario = { engine: 'emulated', subst: '0', inject: 'none', pdfjs: 'ok', stock: 'pinned', host: 'live', tamper: 'none', csp: 'strict' };
 // host=live imitates the measured app.noblepdf.com (GoDaddy Apache) rule: every URL whose
 // path ends in .json is answered 403 before the filesystem is consulted, whether or not the
 // file exists (probe 2026-09-30: does-not-exist.json 403, does-not-exist.txt/.pdf/.bin 404).
 // host=plain serves every file. tamper=manifest flips one byte of fixtures-phase9/manifest.txt;
 // tamper=<file name> flips one byte of that fixtures-phase9 file. Harness only.
 const LIVE_HOST_FORBIDDEN = /\.json$/i;
+// csp=img-relaxed adds this server's 127.0.0.1 origin to img-src in the served HTML, so a
+// cross-origin image can load WITHOUT a CSP violation; only Resource Timing can reveal it
+// (test of the network audit's completeness). Harness only.
+const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 function tampered(buf) { const b = Buffer.from(buf); const i = b.length >> 1; b[i] ^= 0x01; return b; }
 const fakeIndex = () => Buffer.from(template.replaceAll('__VARIANT__', scenario.engine));
 const info = () => ({
@@ -75,6 +79,10 @@ function injectHtml(buf) {
   if (scenario.inject === 'after') s = s.replace('</body>', `${monitor}<script>window.__inlineInjected = 1;</script>\n</body>`);
   if (scenario.inject === 'before') s = s.replace('<head>', `<head>\n${monitor}`);
   if (scenario.inject === 'inline') s = s.replace('</body>', '<script>window.__inlineInjected = 1;</script>\n</body>');
+  if (scenario.csp === 'img-relaxed') {
+    if (!s.includes("img-src 'self';")) throw new Error('img-src directive not found for csp=img-relaxed');
+    s = s.replace("img-src 'self';", `img-src 'self' http://127.0.0.1:${PORT};`);
+  }
   return Buffer.from(s);
 }
 function pdfjsFile(name) {
@@ -91,6 +99,7 @@ const server = http.createServer((req, res) => {
       return send(res, 200, Buffer.from(JSON.stringify(info())), 'application/json');
     }
     if (p === '/__harness/info') return send(res, 200, Buffer.from(JSON.stringify(info())), 'application/json');
+    if (p === '/__harness/pixel.png') return send(res, 200, PIXEL, 'image/png');
     if (p === '/__harness/monitor.js') return send(res, 200, Buffer.from('window.__monitorRan = true;\n'), 'text/javascript');
     if (p === '/__harness/stockglue/index.js') return send(res, 200, stockGlue, TYPES['.js']);
     if (p === '/__harness/stockglue/pdfium.wasm') return send(res, 200, stockWasm, TYPES['.wasm']);

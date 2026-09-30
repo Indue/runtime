@@ -41,6 +41,9 @@ What each step proves
                            control rejected. H01 fetches, from the page, the exact manifest URL
                            of both pages and all deploy-files.txt entries through the harness
                            server, which imitates the live host (403 for every *.json URL).
+                           H02 makes more than 250 requests (the default Resource Timing
+                           buffer), then loads a cross-origin image that the harness-relaxed
+                           img-src allows: the network audit must still see it and fail.
   ascii-check              every text file in the package is ASCII (no em dash).
 
 Fixtures

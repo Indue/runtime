@@ -2,7 +2,7 @@
 import { loadVerifiedEngine, RUN10 } from './te-engine.mjs?v=1';
 import { runFixture, discriminationLabel } from './te-suite.mjs?v=1';
 import { pdfjsLib, browserPdfjs, compareRenders, grow, union, PDFJS_PIN } from './te-render.mjs?v=1';
-import { environmentAudit } from './te-env.mjs?v=1';
+import { environmentAudit } from './te-env.mjs?v=2';
 import { sha256Hex } from './phase8-verify.mjs?v=1';
 
 const PAGE_VERSION = 'phase9-suite-1';

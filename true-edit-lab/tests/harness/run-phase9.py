@@ -67,9 +67,9 @@ def start_server():
     raise RuntimeError('harness server did not start')
 
 
-def configure(engine='real', inject='none', pdfjs='ok', tamper='none'):
+def configure(engine='real', inject='none', pdfjs='ok', tamper='none', csp='strict'):
     # host=live: the harness server answers 403 to every *.json URL, as app.noblepdf.com does.
-    return http_get('/__harness/scenario?' + urllib.parse.urlencode(dict(engine=engine, subst='0', inject=inject, pdfjs=pdfjs, stock='pinned', host='live', tamper=tamper)))
+    return http_get('/__harness/scenario?' + urllib.parse.urlencode(dict(engine=engine, subst='0', inject=inject, pdfjs=pdfjs, stock='pinned', host='live', tamper=tamper, csp=csp)))
 
 
 def new_page(browser, out):
@@ -189,6 +189,55 @@ def host_scenario(browser, sc):
     got = page.evaluate(FETCH_JS, ['/' + r for r in rels])
     bad = [f"{g['u']} HTTP {g['status']}" for g, (want, _) in zip(got, DEPLOY_FILES) if g['status'] != 200 or g['sha'] != want]
     check(not bad and len(got) == len(DEPLOY_FILES), f'all {len(DEPLOY_FILES)} deploy-files.txt entries served with their pinned SHA-256 through the emulated live host' + (f': {bad[:5]}' if bad else ''))
+    ctx.close()
+    out['seconds'] = round(time.time() - t0, 1)
+    out['problems'] = probs
+    return out
+
+
+# The module URLs exactly as phase9-suite.js imports them (same URL = same module instance).
+_SUITE_SRC = open(os.path.join(LAB_DIR, 'phase9-suite.js'), encoding='ascii').read()
+ENV_IMPORT = re.search(r"import \{ environmentAudit \} from '(\./te-env\.mjs\?v=\d+)';", _SUITE_SRC).group(1)
+RENDER_IMPORT = re.search(r"from '(\./te-render\.mjs\?v=\d+)';", _SUITE_SRC).group(1)
+AUDIT_JS = """async ([envUrl, renderUrl]) => {
+  const { environmentAudit } = await import(envUrl);
+  const { PDFJS_PIN } = await import(renderUrl);
+  const r = await environmentAudit({ expectedScripts: ['phase8-csp-guard.js', 'phase9-suite.js', PDFJS_PIN.lib, PDFJS_PIN.worker] });
+  return { pass: r.pass, fail: r.fail, first: r.lines.slice(0, 3) };
+}"""
+
+
+def rt_buffer_scenario(browser, sc):
+    """The network audit must see every request, not only the first 250 (the default
+    Resource Timing buffer; a suite run makes far more). After more than 250 same-origin
+    requests, a cross-origin image that CSP allows (harness-relaxed img-src, so there is no
+    violation to rely on) must make the audit fail."""
+    configure('real', csp='img-relaxed')
+    out = dict(id=sc['id'], note=sc['note'], steps=[])
+    probs = []
+
+    def check(cond, what):
+        out['steps'].append(('OK   ' if cond else 'FAIL ') + what)
+        if not cond:
+            probs.append(what)
+
+    ctx, page = new_page(browser, out)
+    t0 = time.time()
+    page.goto(BASE + SUITE, wait_until='load')
+    page.wait_for_function("() => !document.getElementById('privacyStatus').textContent.startsWith('Checking')", timeout=60000)
+    # Bodies are read: Resource Timing records an entry only when the response completes.
+    page.evaluate("async () => { for (let i = 0; i < 300; i++) await (await fetch('./phase9.css?rt=' + i, { cache: 'no-store' })).arrayBuffer(); }")
+    page.wait_for_timeout(300)
+    total = page.evaluate("() => performance.getEntriesByType('resource').length + (performance.getEntriesByType('resource').length >= 250 ? ' (buffer view)' : '')")
+    clean = page.evaluate(AUDIT_JS, [ENV_IMPORT, RENDER_IMPORT])
+    seen = re.search(r'Resource Timing entries: (\d+)', ' '.join(clean['first']))
+    check(clean['pass'] and seen and int(seen.group(1)) > 300, f'after 300 extra same-origin requests the audit sees all of them and passes ({clean["first"][1] if len(clean["first"]) > 1 else clean}; performance buffer {total})')
+    late = f'http://127.0.0.1:{PORT}/__harness/pixel.png?late=1'
+    loaded = page.evaluate("u => new Promise((res) => { const i = new Image(); i.onload = () => res('load'); i.onerror = () => res('error'); i.src = u; })", late)
+    check(loaded == 'load', f'cross-origin image allowed by the relaxed img-src loaded ({loaded})')
+    dirty = page.evaluate(AUDIT_JS, [ENV_IMPORT, RENDER_IMPORT])
+    hit = [f for f in dirty['fail'] if late in f]
+    check(not dirty['pass'] and bool(hit), f'the late cross-origin load fails the audit ({hit[:1] or dirty["first"][1:2]})')
     ctx.close()
     out['seconds'] = round(time.time() - t0, 1)
     out['problems'] = probs
@@ -377,6 +426,7 @@ SCENARIOS = [
     dict(id='E05', page='editor', kind='miss', note='Editor: a click on empty space selects nothing'),
     dict(id='E06', page='editor', kind='suggest-commit', inject='after', fixtures=['invoice-number-longer', 'ttf-custom-encoding'], note='Editor with host-style scripts injected after the CSP meta: blocked as warnings, editing still verified'),
     dict(id='H01', page='host', note='Live-host compatibility: the exact manifest URL of both pages and every deployed file load with their pins through the emulated host (403 for every *.json URL); the old manifest.json path is refused'),
+    dict(id='H02', page='rtbuffer', note='Network audit completeness: after more than 250 requests (the default Resource Timing buffer), a late cross-origin image that CSP allows must still fail the audit'),
     dict(id='S07', page='suite', tamper='manifest', note='Tampered fixture manifest (one byte): preflight must fail closed', expect=dict(ready='NO', privacy='PASS', fixtures='MISMATCH', fail_contains='DOES NOT MATCH PIN')),
     dict(id='S08', page='suite', tamper=TAMPERED_FIXTURE + '-before.pdf', run_suite=True, note='Tampered fixture PDF (one byte): that fixture must fail on its hash, the suite must stay blocked', expect=dict(ready='YES', privacy='PASS', suite_result='blocked', failing_fixture=TAMPERED_FIXTURE)),
     dict(id='E07', page='editor', kind='manifest-tampered', tamper='manifest', note='Editor with a tampered fixture manifest: startup refused, nothing can be opened'),
@@ -395,7 +445,8 @@ def main():
             browser = pw.chromium.launch(headless=True)
             for sc in scenarios:
                 try:
-                    out = suite_scenario(browser, sc) if sc['page'] == 'suite' else host_scenario(browser, sc) if sc['page'] == 'host' else editor_scenario(browser, sc)
+                    run = {'suite': suite_scenario, 'host': host_scenario, 'rtbuffer': rt_buffer_scenario}.get(sc['page'], editor_scenario)
+                    out = run(browser, sc)
                 except Exception as e:  # a crash is a failure, never a pass
                     out = dict(id=sc['id'], note=sc['note'], problems=[f'harness error: {e}'])
                 out['verdict'] = 'OK' if not out['problems'] else 'UNEXPECTED'
