@@ -1,0 +1,16 @@
+/* NoblePDF True Edit Phase 9 lab additions (layout for the suite table and the editor). ASCII only. */
+.editor-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .editor-grid { grid-template-columns: 1fr; } }
+.page-wrap { position: relative; overflow: auto; max-height: 80vh; border: 1px solid #d6dbe4; border-radius: 8px; background: #f3f5f9; }
+.page-wrap canvas { display: block; cursor: text; }
+.hl { position: absolute; pointer-events: none; border: 2px solid #2463eb; background: rgba(36, 99, 235, 0.08); border-radius: 2px; }
+.hl.blocked { border-color: #c2410c; background: rgba(194, 65, 12, 0.08); }
+.edit-panel label { display: block; font-weight: 600; margin: 10px 0 4px; }
+.edit-panel input[type="text"] { width: 100%; box-sizing: border-box; font: inherit; padding: 8px; border: 1px solid #c3cad6; border-radius: 6px; }
+.edit-panel select { width: 100%; padding: 6px; }
+.reasons { margin: 8px 0 0; padding-left: 18px; }
+.reasons li { margin: 2px 0; }
+.small { font-size: 12px; }
+td.pass { color: #166534; font-weight: 600; }
+td.fail { color: #b91c1c; font-weight: 600; }
+td.mono, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }

@@ -1,0 +1,161 @@
+[
+ {
+  "id": "FI-01",
+  "name": "SetPositions is a no-op (stock engine or broken patch)",
+  "evidence": 20,
+  "rejected": 20,
+  "acceptedBad": [],
+  "nonDiscriminating": 2,
+  "caughtBy": [
+   "V05",
+   "V08"
+  ]
+ },
+ {
+  "id": "FI-02",
+  "name": "legacy F15: SetPositions called with count 0 for one-glyph results",
+  "evidence": 1,
+  "rejected": 1,
+  "acceptedBad": [],
+  "nonDiscriminating": 21,
+  "caughtBy": [
+   "engine-refused"
+  ]
+ },
+ {
+  "id": "FI-03",
+  "name": "legacy F7: character codes taken from Unicode (code == Unicode assumption)",
+  "evidence": 7,
+  "rejected": 7,
+  "acceptedBad": [],
+  "nonDiscriminating": 15,
+  "caughtBy": [
+   "V03",
+   "V04",
+   "V08",
+   "V10",
+   "V12",
+   "V13",
+   "V07",
+   "V05"
+  ]
+ },
+ {
+  "id": "FI-04",
+  "name": "legacy F9: Run #10 layout with UTF-16 string indexing",
+  "evidence": 1,
+  "rejected": 1,
+  "acceptedBad": [],
+  "nonDiscriminating": 21,
+  "caughtBy": [
+   "V05",
+   "V08"
+  ]
+ },
+ {
+  "id": "FT-01",
+  "name": "incremental update appended (second revision, /Prev)",
+  "evidence": 22,
+  "rejected": 22,
+  "acceptedBad": [],
+  "nonDiscriminating": 0,
+  "caughtBy": [
+   "V01"
+  ]
+ },
+ {
+  "id": "FT-02",
+  "name": "unreferenced stream carrying the old text",
+  "evidence": 22,
+  "rejected": 22,
+  "acceptedBad": [],
+  "nonDiscriminating": 0,
+  "caughtBy": [
+   "V11"
+  ]
+ },
+ {
+  "id": "FT-03",
+  "name": "hidden copy of the old text (render mode 3) added to the page",
+  "evidence": 22,
+  "rejected": 22,
+  "acceptedBad": [],
+  "nonDiscriminating": 0,
+  "caughtBy": [
+   "V02",
+   "V03",
+   "V04",
+   "V08",
+   "V10",
+   "V11",
+   "V12",
+   "V07"
+  ]
+ },
+ {
+  "id": "FT-04",
+  "name": "white rectangle overlay on the edit area",
+  "evidence": 22,
+  "rejected": 22,
+  "acceptedBad": [],
+  "nonDiscriminating": 0,
+  "caughtBy": [
+   "V02",
+   "V04"
+  ]
+ },
+ {
+  "id": "FT-05",
+  "name": "image overlay (raster substitute)",
+  "evidence": 22,
+  "rejected": 22,
+  "acceptedBad": [],
+  "nonDiscriminating": 0,
+  "caughtBy": [
+   "V02",
+   "V04",
+   "V09"
+  ]
+ },
+ {
+  "id": "FT-06",
+  "name": "an untouched text object moved by 0.5 pt",
+  "evidence": 15,
+  "rejected": 15,
+  "acceptedBad": [],
+  "nonDiscriminating": 7,
+  "caughtBy": [
+   "V06",
+   "V08"
+  ]
+ },
+ {
+  "id": "FT-07",
+  "name": "target text silently different (one code changed)",
+  "evidence": 21,
+  "rejected": 21,
+  "acceptedBad": [],
+  "nonDiscriminating": 1,
+  "caughtBy": [
+   "V03",
+   "V04",
+   "V08",
+   "V10",
+   "V12",
+   "V13",
+   "V07"
+  ]
+ },
+ {
+  "id": "FT-08",
+  "name": "kerning of untouched objects dropped (stock-generator behaviour)",
+  "evidence": 6,
+  "rejected": 6,
+  "acceptedBad": [],
+  "nonDiscriminating": 16,
+  "caughtBy": [
+   "V06",
+   "V08"
+  ]
+ }
+]

@@ -1,0 +1,82 @@
+S01 [OK] Suite page, real engine, no injection: every fixture must match and the live control must pass
+    | NoblePDF True Edit Phase 9 fixture suite - PASS (fixtures only)
+    | Time: 2026-09-30T03:22:15.163Z  Page: phase9-suite-1  PDF.js 3.11.174  UA: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.7390.37 Safari/537.36
+    | Engine: Run #10 (pinned); manifest 9026394f2c900433e7e199ce943e509554311c324a34bea0b0fbfcb2e968eeee
+    | Matched 47/47; committed 22; failed closed as expected 25; live discrimination control PASS (rejected)
+    | Environment: PASS; CSP-blocked attempts 0; eval blocked true; service worker no
+    | 
+    | PASS  cid-astral                     expected committed observed committed disc yes (0.42 pt)  13 gates + 7 reference checks passed | X01 0 of 7723269 pixels differ by more than 8/255 at 288 dpi (max 0) | X02 0 of 160251 pixels differ by more than 8/255 at 288 dpi (max 0) | X03 0 of 1938816 pixels differ by more than 8/255 at 144 dpi (max 0)
+    | PASS  cid-greek                      expected committed observed committed disc yes (0.56 pt)  13 gates + 7 reference checks passed | X01 0 of 7711281 pixels differ by more than 8/255 at 288 dpi (max 0) | X02 0 of 200655 pixels differ by more than 8/255 at 288 dpi (max 0) | X03 0 of 1938816 pixels differ by more than 8/255 at 144 dpi (max 0)
+S02 [OK] Host-style cross-origin + inline scripts after the CSP meta: blocked, recorded as warnings, still ready
+S03 [OK] Cross-origin script before the CSP meta (it executes): must fail closed
+S04 [OK] Engine bytes that are not Run #10: must not load
+S05 [OK] PDF.js bytes that differ from the pin: must fail closed
+S06 [OK] Inline script after the CSP meta only: blocked, matched by a recorded violation, warning
+E01 [OK] Editor: click, edit, commit, download, second edit (deletion), undo x2, suggested edit, reset
+    OK   engine verified (Run #10 engine verified (wasm c4f54bda9bc7...), PDF.js 3.11.174.)
+    OK   original bytes are the pinned fixture
+    OK   click on the rendered page selected 'Invoice Number: 12345'
+    OK   edit committed (Committed: "Invoice Number: 12345" -> "Invoice Number: INV-2026-0012345" (14 checks passed)
+    OK   working document replaced, one undo step
+    OK   download equals the verified working document
+    OK   download is a single revision (one %%EOF, no /Prev)
+    OK   the edited text is selectable again after re-render
+    OK   second edit (pure deletion, widened) committed (Committed: "Invoice Number: INV-2026-0012345" -> "Invoice Number: INV-2026-001234" (14 che)
+    OK   two undo steps
+    OK   undo restores the first verified result
+    OK   second undo restores the original
+    OK   suggested edit committed again
+    OK   reset restores the original and clears undo
+E02 [OK] Editor: astral CID, astral simple font with Tw, Tz 150, rotated text and width-preserving fit commit through the real click path
+    OK   engine verified (Run #10 engine verified (wasm c4f54bda9bc7...), PDF.js 3.11.174.)
+    OK   cid-astral: click selected the target object
+    OK   cid-astral: committed (Committed: "Old Italic: \u{10300}\u{10301}" -> "Old Italic: \u{10302}\u{10303}\u{10304}" (14 checks passed; layout needed SetPositions).)
+    OK   cid-astral: working document changed
+    OK   ttf-astral-tw: click selected the target object
+    OK   ttf-astral-tw: committed (Committed: "Rune \u{10300} mark here" -> "Rune \u{10300} new sign here" (14 checks passed; layout needed SetPosition)
+    OK   ttf-astral-tw: working document changed
+    OK   state-tz150: click selected the target object
+    OK   state-tz150: committed (Committed: "Condensed caption text" -> "Condensed banner title text" (14 checks passed; layout neede)
+    OK   state-tz150: working document changed
+    OK   rotated-30: click selected the target object
+    OK   rotated-30: committed (Committed: "Rotated stamp APPROVED" -> "Rotated stamp REJECTED" (14 checks passed; layout needed Set)
+    OK   rotated-30: working document changed
+    OK   invoice-status-fit: click selected the target object
+    OK   invoice-status-fit: committed (Committed: "Status: PENDING REVIEW" -> "Status: OVERDUE NOTICE" (14 checks passed; layout needed Set)
+    OK   invoice-status-fit: working document changed
+E03 [OK] Editor: blocked documents and targets fail closed with the expected reason
+    OK   engine verified (Run #10 engine verified (wasm c4f54bda9bc7...), PDF.js 3.11.174.)
+    OK   blocked-signed: page-level gate shown before any click (signed-document)
+    OK   blocked-signed: reason signed-document shown ('signed-document: 1 signature(s); editing would invalidate them This text cannot be edited (fails closed):')
+    OK   blocked-signed: apply stays disabled
+    OK   blocked-signed: working document untouched
+    OK   blocked-type3: reason font-type3 shown ('font-type3: Type3 fonts are not supported This text cannot be edited (fails closed):')
+    OK   blocked-type3: apply stays disabled
+    OK   blocked-type3: working document untouched
+    OK   blocked-form-xobject: reason text-in-form-xobject shown ('text-in-form-xobject: this content is drawn by a Form XObject (possibly shared); blocked This text cannot be edited.')
+    OK   blocked-form-xobject: apply stays disabled
+    OK   blocked-form-xobject: working document untouched
+    OK   blocked-actualtext: reason marked-content-actualtext shown ('marked-content-ambiguous: marked content /Span with ActualText parameters\nmarked-content-actualtext: /Span carries Actua')
+    OK   blocked-actualtext: apply stays disabled
+    OK   blocked-actualtext: working document untouched
+    OK   blocked-vertical: reason font-vertical shown ('first-glyph-not-at-origin: x0 -4.10400390625\nbaseline-not-horizontal: residual 154.5600\nfont-vertical: vertical writing ')
+    OK   blocked-vertical: apply stays disabled
+    OK   blocked-vertical: working document untouched
+E04 [OK] Editor: an edit that verification rejects never replaces the working document
+    OK   engine verified (Run #10 engine verified (wasm c4f54bda9bc7...), PDF.js 3.11.174.)
+    OK   rejected by verification (Rejected by verification. The working document was NOT replaced.)
+    OK   the failing check is V12 (PDF.js grouping of an untouched object)
+    OK   failed edit did not replace the working document
+E05 [OK] Editor: a click on empty space selects nothing
+    OK   engine verified (Run #10 engine verified (wasm c4f54bda9bc7...), PDF.js 3.11.174.)
+    OK   click on empty page area selects nothing
+    OK   apply disabled without a selection
+E06 [OK] Editor with host-style scripts injected after the CSP meta: blocked as warnings, editing still verified
+    OK   engine verified (Run #10 engine verified (wasm c4f54bda9bc7...), PDF.js 3.11.174.)
+    OK   invoice-number-longer: click selected the target object
+    OK   invoice-number-longer: committed (Committed: "Invoice Number: 12345" -> "Invoice Number: INV-2026-0012345" (14 checks passed; layout n)
+    OK   invoice-number-longer: working document changed
+    OK   ttf-custom-encoding: click selected the target object
+    OK   ttf-custom-encoding: committed (Committed: "Order ref: KX-42" -> "Order ref: ZQ-9001" (14 checks passed; layout needed SetPositions))
+    OK   ttf-custom-encoding: working document changed
+    OK   host-style injected scripts were blocked and recorded as warnings

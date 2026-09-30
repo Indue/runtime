@@ -1,0 +1,639 @@
+{
+ "pdfjs": "3.11.174",
+ "rows": [
+  {
+   "id": "cid-astral",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.42 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "cid-greek",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.56 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "euro-winansi",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.36 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "invoice-billto-spaces-tw",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.36 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "invoice-number-longer",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.60 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "invoice-status-fit",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (2.66 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "invoice-total-shorter",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.30 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "leading-tj",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.36 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "one-char-replacement",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.48 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "one-glyph-object",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "no",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "p8-waveskern",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "no",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "rotated-30",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.70 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "scaled-tm",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.36 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "state-tc",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.48 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "state-tz150",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.36 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "state-tz80",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.36 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "std-differences",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.80 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "tagged-mcid",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.36 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "ttf-astral-tw",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.39 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "ttf-custom-encoding",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.52 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "ttf-winansi-nonascii",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.42 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "untouched-mix",
+   "expected": "committed",
+   "got": "committed",
+   "ok": true,
+   "disc": "yes (0.48 pt)",
+   "reasons": [],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-actualtext",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "marked-content-ambiguous",
+    "marked-content-actualtext",
+    "unicode-mapping-disagreement",
+    "engine-interpreter-position-disagreement",
+    "original-extraction-inconsistent-pdfjs"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-clip",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "target-clipped"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-collision",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "collision-with-neighbour"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-encrypted-restricted",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "encrypted-document",
+    "permissions-restrict-modify",
+    "independent-reader-unavailable",
+    "object-mapping-failed",
+    "target-unmapped"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-form-xobject",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "text-in-form-xobject"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-glyph-missing",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "glyph-not-in-font-subset",
+    "glyph-not-in-font-subset",
+    "glyph-not-in-font-subset",
+    "glyph-not-in-font-subset",
+    "glyph-not-in-font-subset",
+    "glyph-not-in-font-subset"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-image-only",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "no-editable-text"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-no-unicode-map",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "font-no-unicode-map"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-ocr-invisible",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "no-editable-text",
+    "invisible-text"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-optional-content",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "marked-content-ambiguous",
+    "optional-content"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-page-rotate",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "page-rotation-not-validated"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-shared-content",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "shared-content-stream"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-signed",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "signed-document"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-std14-no-widths-euro",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "metrics-disagree"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-text-rise",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "text-rise-not-validated"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-tracked-text",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "tracked-text",
+    "original-extraction-inconsistent-pdfjs"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-type3",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "font-type3"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "blocked-vertical",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "first-glyph-not-at-origin",
+    "baseline-not-horizontal",
+    "font-vertical"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "input-combining",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "combining-mark-unsupported"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "input-empty",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "empty-replacement"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "input-line-break",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "line-break-unsupported"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "input-lone-surrogate",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "invalid-unicode"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "input-rtl",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "rtl-unsupported"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "input-zwj",
+   "expected": "blocked",
+   "got": "blocked",
+   "ok": true,
+   "disc": "n/a",
+   "reasons": [
+    "format-character-unsupported"
+   ],
+   "mismatch": [],
+   "failedChecks": [],
+   "ref": [],
+   "notes": []
+  },
+  {
+   "id": "rejected-untouched-grouping",
+   "expected": "rejected",
+   "got": "rejected",
+   "ok": true,
+   "disc": "no",
+   "reasons": [
+    "V12"
+   ],
+   "mismatch": [],
+   "failedChecks": [
+    "V12: \"Editable row\\nStretched\" vs expected \"Editable row\\nStret ched\""
+   ],
+   "ref": [],
+   "notes": []
+  }
+ ]
+}

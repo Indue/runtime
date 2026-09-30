@@ -1,0 +1,12 @@
+2af28659a83b5691ed1193bd0819a6a1339036fb08505826d561c7541762baf2 vendor/pdfium-2.15.1-setpositions/index.js
+c4f54bda9bc730c0aeb6579254f0431fa95886478cd19967555be6ea2a35ce11 vendor/pdfium-2.15.1-setpositions/pdfium.wasm
+0e31ce6c207b371384392242c560b5e88d90221843dfbbaebf3f5cff1e22f2e0 vendor/pdfium-2.15.1/index.js
+5e4cd023c3dad4a895b3571ca573d3fc51bac6de48360d95283134385b954eaa vendor/pdfium-2.15.1/pdfium.wasm
+5b5799e6f8c680663207ac5b42ee14eed2a406fa7af48f50c154f0c0b1566946 vendor/pdfjs-3.11.174/pdf.min.js
+feabdf309770ed24bba31a5467836cdc8cf639c705af27d52b585b041bb8527b vendor/pdfjs-3.11.174/pdf.worker.min.js
+67721e5d2862fdaae76c51fadc19951e9922586cdd71d97a8736578f77dc35d5 lab/true-text-edit/phase8-verify.mjs
+8dd27a70889f0bce12c076bb7bbc8073807ffd6a00f6a0f83b01331b12c71a7d lab/true-text-edit/phase8-csp-guard.js
+01476e596e146ec3cbe62516ed51333bfa4c7fb02ef288e8c7e8b84cb931ce9a lab/true-text-edit/phase8-layout.mjs
+12f6055ccf4221a931cb4b8e48a16ba9150a782b229b6ee76adec3e16acab305 lab/true-text-edit/fixtures-phase8/pure-tj-before.pdf
+17202332e5b3531f568ea5166fe687368bca9dc5ef732d305876c3a4ed8882f9 lab/true-text-edit/fixtures-phase8/pure-tj-reference.pdf
+ANY lab/true-text-edit/phase8.css

@@ -1,0 +1,17 @@
+SKIP (V1_LAB_DIR not set, V1 page not in this package): H01 H02 H03 H04 H05 H06
+H10 OK         v2 emulated        ready=NO decision=None failed=['P05', 'P06', 'P07', 'P08'] 1.3s 
+H11 OK         v2 emulated        ready=YES decision='PHASE 8 V2 PASS (this fixture only)' failed=[] 2.4s 
+H12 OK         v2 noop            ready=YES decision='KEEP BLOCKED' failed=['L02', 'L03', 'L04', 'L05'] 1.9s 
+H13 OK         v2 incremental     ready=YES decision='KEEP BLOCKED' failed=['A13', 'A14', 'L06'] 1.9s 
+H14 OK         v2 orphan          ready=YES decision='KEEP BLOCKED' failed=['A14', 'L06'] 2.0s 
+H15 OK         v2 hiddenold       ready=YES decision='KEEP BLOCKED' failed=['A02', 'A05', 'A08', 'A09', 'A14', 'L06'] 2.0s 
+H16 OK         v2 overlay         ready=YES decision='KEEP BLOCKED' failed=['A08', 'A14'] 1.9s 
+H17 OK         v2 neighbourshift  ready=YES decision='KEEP BLOCKED' failed=['A07'] 1.9s 
+H18 OK         v2 glyphdrift      ready=YES decision='KEEP BLOCKED' failed=['A06', 'L02'] 1.8s 
+H19 OK         v2 fallback        ready=NO decision=None failed=['P07'] 1.4s 
+H20 OK         v2 emulated        ready=YES decision='PHASE 8 V2 PASS (this fixture only)' failed=[] 1.9s 
+H21 OK         v2 emulated        ready=NO decision=None failed=['P10'] 1.4s 
+H22 OK         v2 emulated        ready=NO decision=None failed=['P02'] 1.1s 
+H23 OK         v2 real            ready=YES decision='PHASE 8 V2 PASS (this fixture only)' failed=[] 1.9s 
+H24 OK         v2 real            ready=NO decision=None failed=['P09'] 1.3s 
+MATRIX OK

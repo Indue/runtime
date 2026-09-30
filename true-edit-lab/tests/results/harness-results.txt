@@ -1,0 +1,60 @@
+H10 [OK] V2 engine=emulated subst=0 inject=none pdfjs=ok
+    V2 with the real Run #10 hashes against a fake engine
+    ready=NO decision=None legacy=None anchored=None
+    preflight failed=['P05', 'P06', 'P07', 'P08'] proof failed=None
+H11 [OK] V2 engine=emulated subst=1 inject=none pdfjs=ok
+    V2 against an emulated working patch (harness hashes substituted), proof run twice
+    ready=YES decision='PHASE 8 V2 PASS (this fixture only)' legacy='CONTROL VALID (failed as designed)' anchored='PASS'
+    preflight failed=[] proof failed=[]
+H12 [OK] V2 engine=noop subst=1 inject=none pdfjs=ok
+    V2 with SetPositions as a silent no-op
+    ready=YES decision='KEEP BLOCKED' legacy='CONTROL INVALID' anchored='PASS'
+    preflight failed=[] proof failed=['L02', 'L03', 'L04', 'L05']
+H13 [OK] V2 engine=incremental subst=1 inject=none pdfjs=ok
+    V2 with an incremental append save
+    ready=YES decision='KEEP BLOCKED' legacy='CONTROL INVALID' anchored='FAIL'
+    preflight failed=[] proof failed=['A13', 'A14', 'L06']
+H14 [OK] V2 engine=orphan subst=1 inject=none pdfjs=ok
+    V2 with an unreferenced old content stream
+    ready=YES decision='KEEP BLOCKED' legacy='CONTROL INVALID' anchored='FAIL'
+    preflight failed=[] proof failed=['A14', 'L06']
+H15 [OK] V2 engine=hiddenold subst=1 inject=none pdfjs=ok
+    V2 with invisible old text kept under the new text
+    ready=YES decision='KEEP BLOCKED' legacy='CONTROL INVALID' anchored='FAIL'
+    preflight failed=[] proof failed=['A02', 'A05', 'A08', 'A09', 'A14', 'L06']
+H16 [OK] V2 engine=overlay subst=1 inject=none pdfjs=ok
+    V2 with a hidden image overlay object
+    ready=YES decision='KEEP BLOCKED' legacy='CONTROL VALID (failed as designed)' anchored='FAIL'
+    preflight failed=[] proof failed=['A08', 'A14']
+H17 [OK] V2 engine=neighbourshift subst=1 inject=none pdfjs=ok
+    V2 with the neighbour line moved by 0.02 pt
+    ready=YES decision='KEEP BLOCKED' legacy='CONTROL VALID (failed as designed)' anchored='FAIL'
+    preflight failed=[] proof failed=['A07']
+H18 [OK] V2 engine=glyphdrift subst=1 inject=none pdfjs=ok
+    V2 with one glyph misplaced by 0.05 pt
+    ready=YES decision='KEEP BLOCKED' legacy='CONTROL INVALID' anchored='FAIL'
+    preflight failed=[] proof failed=['A06', 'L02']
+H19 [OK] V2 engine=fallback subst=1 inject=none pdfjs=ok
+    V2 when the engine glue ignores the verified bytes
+    ready=NO decision=None legacy=None anchored=None
+    preflight failed=['P07'] proof failed=None
+H20 [OK] V2 engine=emulated subst=1 inject=after pdfjs=ok
+    V2 with host-style cross-origin and inline scripts after the CSP meta
+    ready=YES decision='PHASE 8 V2 PASS (this fixture only)' legacy='CONTROL VALID (failed as designed)' anchored='PASS'
+    preflight failed=[] proof failed=[]
+H21 [OK] V2 engine=emulated subst=1 inject=before pdfjs=ok
+    V2 with a cross-origin script injected before the CSP meta
+    ready=NO decision=None legacy=None anchored=None
+    preflight failed=['P10'] proof failed=None
+H22 [OK] V2 engine=emulated subst=1 inject=none pdfjs=badversion
+    V2 with a PDF.js build reporting a different version
+    ready=NO decision=None legacy=None anchored=None
+    preflight failed=['P02'] proof failed=None
+H23 [OK] V2 engine=real subst=0 inject=none pdfjs=ok
+    V2.1.1 with the REAL Run #10 engine (hash-verified copy) and the pinned stock engine
+    ready=YES decision='PHASE 8 V2 PASS (this fixture only)' legacy='CONTROL VALID (failed as designed)' anchored='PASS'
+    preflight failed=[] proof failed=[]
+H24 [OK] V2 engine=real subst=0 inject=none pdfjs=ok
+    V2.1.1 when the stock glue differs from STOCK_PINNED
+    ready=NO decision=None legacy=None anchored=None
+    preflight failed=['P09'] proof failed=None

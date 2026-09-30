@@ -1,0 +1,243 @@
+{
+ "pdfjs": "6.3.289",
+ "rows": [
+  {
+   "id": "base",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "tz50-regenerated",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "tz100-regenerated",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "tz150-regenerated",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "tz50-original-operator",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.2041,
+   "pdfjsNeg": -0.4001,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": null,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "tz150-original-operator",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.0681,
+   "pdfjsNeg": -0.1335,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": null,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": true
+  },
+  {
+   "id": "tc+0.05em",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.052,
+   "pdfjsNeg": -0.25,
+   "policy": {
+    "lo": -0.23,
+    "hi": 0.032
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.045
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "tc-0.05em",
+   "pdfiumPos": 0.1891,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1521,
+   "pdfjsNeg": -0.1501,
+   "policy": {
+    "lo": -0.13,
+    "hi": 0.132
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "narrow-space-160",
+   "pdfiumPos": 0.0801,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.06
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "narrow-space-100",
+   "pdfiumPos": 0.0501,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.03
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": true
+  },
+  {
+   "id": "rotated-30",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "rotated-90",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "scaled-tm-2x-9pt",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  },
+  {
+   "id": "scaled-cm-0.5",
+   "pdfiumPos": 0.139,
+   "pdfiumNeg": null,
+   "pdfjsPos": 0.1021,
+   "pdfjsNeg": -0.2002,
+   "policy": {
+    "lo": -0.18,
+    "hi": 0.082
+   },
+   "safe": true,
+   "legacyAccepts": {
+    "lo": -0.15,
+    "hi": 0.08
+   },
+   "legacyUnsafe": false
+  }
+ ]
+}

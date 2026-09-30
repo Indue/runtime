@@ -1,0 +1,49 @@
+# NoblePDF True Edit lab CI (Phase 8 V2.1.1 + Phase 9). Lab only: nothing is deployed.
+# Place the package contents in the repository folder named by PKG (default
+# true-edit-lab/), or change PKG below. The patched engine is fetched read-only from the
+# live vendor folder and accepted only if both files match the Run #10 SHA-256 pins; set
+# the repository variable PATCHED_ENGINE_BASE_URL to use another location instead.
+name: true-edit-phase9-lab
+on:
+  workflow_dispatch:
+  push:
+    paths: ['true-edit-lab/**', '.github/workflows/true-edit-phase9-lab.yml']
+  pull_request:
+    paths: ['true-edit-lab/**', '.github/workflows/true-edit-phase9-lab.yml']
+permissions:
+  contents: read
+env:
+  PKG: true-edit-lab
+jobs:
+  lab-suite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: ${{ env.PKG }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test dependencies (pdfjs-dist 3.11.174 / 4.10.38 / 6.3.289, @embedpdf/pdfium 2.15.1)
+        run: npm install --no-audit --no-fund --prefix tests
+      - name: Patched engine (hash-pinned Run #10)
+        run: sh tests/tools/fetch-engine.sh "${{ vars.PATCHED_ENGINE_BASE_URL || 'https://app.noblepdf.com/vendor/pdfium-2.15.1-setpositions/' }}"
+      - name: Playwright Chromium
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Full lab sequence (unit, API, suites, faults, thresholds, manifest, browser, ASCII)
+        run: sh tests/run-all.sh
+      - name: Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: true-edit-lab-results
+          path: ${{ env.PKG }}/tests/results/
+          retention-days: 30

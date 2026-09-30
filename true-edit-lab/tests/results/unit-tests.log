@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: F9: code points, not UTF-16 units
+ok 1 - F9: code points, not UTF-16 units
+  ---
+  duration_ms: 1.54202
+  type: 'test'
+  ...
+# Subtest: replacement validation (empty, unpaired surrogates, combining, RTL, controls, line breaks, format chars)
+ok 2 - replacement validation (empty, unpaired surrogates, combining, RTL, controls, line breaks, format chars)
+  ---
+  duration_ms: 1.400266
+  type: 'test'
+  ...
+# Subtest: F7: glyph mapping uses the font model, never code == Unicode
+ok 3 - F7: glyph mapping uses the font model, never code == Unicode
+  ---
+  duration_ms: 0.339137
+  type: 'test'
+  ...
+# Subtest: Tw applies to single-byte code 32 only (not to a space glyph at another code, not to 2-byte fonts)
+ok 4 - Tw applies to single-byte code 32 only (not to a space glyph at another code, not to 2-byte fonts)
+  ---
+  duration_ms: 0.160885
+  type: 'test'
+  ...
+# Subtest: F9 regression: the Run \#10 layout (UTF-16 indexing) misplaces word spacing after an astral glyph; the new layout does not
+ok 5 - F9 regression: the Run \#10 layout (UTF-16 indexing) misplaces word spacing after an astral glyph; the new layout does not
+  ---
+  duration_ms: 0.771483
+  type: 'test'
+  ...
+# Subtest: layout: prefix fixed, new glyphs natural, suffix shifted with its kerning; one-glyph and x0 != 0 handled
+ok 6 - layout: prefix fixed, new glyphs natural, suffix shifted with its kerning; one-glyph and x0 != 0 handled
+  ---
+  duration_ms: 0.515222
+  type: 'test'
+  ...
+# Subtest: F10: gap policy uses font space width, Tc and size; fails closed
+ok 7 - F10: gap policy uses font space width, Tc and size; fails closed
+  ---
+  duration_ms: 0.624605
+  type: 'test'
+  ...
+# Subtest: ToUnicode parser: bfchar, bfrange (offset and array forms), surrogate pairs
+ok 8 - ToUnicode parser: bfchar, bfrange (offset and array forms), surrogate pairs
+  ---
+  duration_ms: 0.947376
+  type: 'test'
+  ...
+# Subtest: font model: /Differences, WinAnsi Euro, lowest declared code, widths from /Widths
+ok 9 - font model: /Differences, WinAnsi Euro, lowest declared code, widths from /Widths
+  ---
+  duration_ms: 8.777627
+  type: 'test'
+  ...
+# Subtest: independent interpreter reproduces spec positions (Tc, Tw, Tz, TJ, Ts, cm)
+ok 10 - independent interpreter reproduces spec positions (Tc, Tw, Tz, TJ, Ts, cm)
+  ---
+  duration_ms: 4.247554
+  type: 'test'
+  ...
+# Subtest: TrueType reader: glyph presence in an embedded subset
+ok 11 - TrueType reader: glyph presence in an embedded subset
+  ---
+  duration_ms: 66.777728
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 156.847577

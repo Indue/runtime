@@ -1,0 +1,1366 @@
+{
+ "version": "phase9-fixtures-1",
+ "generator": "tests/fixtures/gen_fixtures.py",
+ "fixtures": [
+  {
+   "id": "cid-astral",
+   "title": "CID with astral characters (surrogate pairs in JavaScript): U+10300 U+10301 -> U+10302 U+10303 U+10304",
+   "before": "cid-astral-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.42
+   },
+   "covers": [
+    "cid",
+    "astral",
+    "f9",
+    "prefix"
+   ],
+   "notes": "",
+   "reference": "cid-astral-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Old Italic: \ud800\udf00\ud800\udf01",
+    "find": "\ud800\udf00\ud800\udf01",
+    "occurrence": 0,
+    "replace": "\ud800\udf02\ud800\udf03\ud800\udf04",
+    "fit": false,
+    "expectedText": "Old Italic: \ud800\udf02\ud800\udf03\ud800\udf04"
+   },
+   "sha256": {
+    "before": "bc47bf273c6d95fb1ee75334d68138f5237a1f216053c5ea177ce98ce3f2c740",
+    "reference": "a7fed2ef5f932a8f86b1e079b1124b11de4eb18575897df9d5f089bfb14ec197"
+   }
+  },
+  {
+   "id": "cid-greek",
+   "title": "CID (Type0 Identity-H, embedded TrueType): Greek \"\\u0391\\u03b8\\u03ae\\u03bd\\u03b1\" -> \"\\u0398\\u03b5\\u03c3\\u03c3\\u03b1\\u03bb\\u03bf\\u03bd\\u03af\\u03ba\\u03b7\"",
+   "before": "cid-greek-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.56
+   },
+   "covers": [
+    "cid",
+    "non-ascii",
+    "code-ne-unicode",
+    "suffix",
+    "shorter-to-longer"
+   ],
+   "notes": "",
+   "reference": "cid-greek-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "\u0391\u03b8\u03ae\u03bd\u03b1 2026",
+    "find": "\u0391\u03b8\u03ae\u03bd\u03b1",
+    "occurrence": 0,
+    "replace": "\u0398\u03b5\u03c3\u03c3\u03b1\u03bb\u03bf\u03bd\u03af\u03ba\u03b7",
+    "fit": false,
+    "expectedText": "\u0398\u03b5\u03c3\u03c3\u03b1\u03bb\u03bf\u03bd\u03af\u03ba\u03b7 2026"
+   },
+   "sha256": {
+    "before": "30bf6501e75d22f8ee3176be1232ebf48f1aa89ad5b5af22031102960a497cca",
+    "reference": "6e0a5eec2543484baefa16e68deb327ed1baf45882e3f3c89054d7e445287a17"
+   }
+  },
+  {
+   "id": "euro-winansi",
+   "title": "Helvetica WinAnsi with /Widths: \"5 EUR\" -> \"\\u20ac5\" (code 0x80, not U+20AC)",
+   "before": "euro-winansi-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.36
+   },
+   "covers": [
+    "non-ascii",
+    "code-ne-unicode",
+    "f7-trap",
+    "suffix",
+    "longer-to-shorter"
+   ],
+   "notes": "",
+   "reference": "euro-winansi-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Price: 5 EUR each",
+    "find": "5 EUR",
+    "occurrence": 0,
+    "replace": "\u20ac5",
+    "fit": false,
+    "expectedText": "Price: \u20ac5 each"
+   },
+   "sha256": {
+    "before": "9979634e2d574c181a316962569f5adce97e0aba4722458b301d4bd2ea2359e5",
+    "reference": "e7c559bd093a0337a5ff9eba314c880cb6561fc17187ce481569e2310f6cf1a5"
+   }
+  },
+  {
+   "id": "invoice-billto-spaces-tw",
+   "title": "Invoice: \"Jane Citizen\" -> \"Dr Jane Q Citizen\" (real spaces, Tw 1.5)",
+   "before": "invoice-billto-spaces-tw-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.36
+   },
+   "covers": [
+    "real-spaces",
+    "tw",
+    "prefix"
+   ],
+   "notes": "",
+   "reference": "invoice-billto-spaces-tw-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Bill to: Jane Citizen",
+    "find": "Jane Citizen",
+    "occurrence": 0,
+    "replace": "Dr Jane Q Citizen",
+    "fit": false,
+    "expectedText": "Bill to: Dr Jane Q Citizen"
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80",
+    "reference": "bf680cb6610d89a74ba81fc350f458f35e7b7cbfe50bb26f5565a6962fa2718b"
+   }
+  },
+  {
+   "id": "invoice-number-longer",
+   "title": "Invoice: \"12345\" -> \"INV-2026-0012345\" (non-empty prefix with kerning fixed, shorter -> longer)",
+   "before": "invoice-number-longer-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.6
+   },
+   "covers": [
+    "prefix",
+    "shorter-to-longer",
+    "prefix-kerning",
+    "document-like",
+    "untouched-neighbours"
+   ],
+   "notes": "",
+   "reference": "invoice-number-longer-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "INV-2026-0012345",
+    "fit": false,
+    "expectedText": "Invoice Number: INV-2026-0012345"
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80",
+    "reference": "436fd824de561a9fb14bf3a1a62681e17c5d8eae7643e364313249e8ebab8655"
+   }
+  },
+  {
+   "id": "invoice-status-fit",
+   "title": "Invoice: \"PENDING REVIEW\" -> \"OVERDUE NOTICE\" with width-preserving fit",
+   "before": "invoice-status-fit-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 2.664
+   },
+   "covers": [
+    "fit",
+    "real-spaces",
+    "width-preserving"
+   ],
+   "notes": "",
+   "reference": "invoice-status-fit-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Status: PENDING REVIEW",
+    "find": "PENDING REVIEW",
+    "occurrence": 0,
+    "replace": "OVERDUE NOTICE",
+    "fit": true,
+    "expectedText": "Status: OVERDUE NOTICE"
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80",
+    "reference": "982f0b3c7c974e9505fd854f445933757fb45ce01697f6462ec33504aa13427e"
+   }
+  },
+  {
+   "id": "invoice-total-shorter",
+   "title": "Invoice: \"1,234.50\" -> \"987.00\" (prefix fixed, suffix \" AUD\" with kerning shifts left)",
+   "before": "invoice-total-shorter-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.3
+   },
+   "covers": [
+    "prefix",
+    "suffix",
+    "longer-to-shorter",
+    "suffix-kerning"
+   ],
+   "notes": "",
+   "reference": "invoice-total-shorter-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Total due: 1,234.50 AUD",
+    "find": "1,234.50",
+    "occurrence": 0,
+    "replace": "987.00",
+    "fit": false,
+    "expectedText": "Total due: 987.00 AUD"
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80",
+    "reference": "558cd937f11198a234a4b6abd4f52c940782d5341b93e67218b8624c108f3595"
+   }
+  },
+  {
+   "id": "leading-tj",
+   "title": "Leading TJ offset [-400 (...)]: \"Scope\" -> \"Coverage\" (PDFium folds the offset into the object matrix)",
+   "before": "leading-tj-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.36
+   },
+   "covers": [
+    "leading-tj",
+    "prefix"
+   ],
+   "notes": "",
+   "reference": "leading-tj-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Section 4.2 Scope",
+    "find": "Scope",
+    "occurrence": 0,
+    "replace": "Coverage",
+    "fit": false,
+    "expectedText": "Section 4.2 Coverage"
+   },
+   "sha256": {
+    "before": "e493d0cb19416ed317a5cbf3e58a5b66f708699d67e6d2a58e860ca0d0c25328",
+    "reference": "af555efa30b0159d7f32d8cbfaba83d41e6e4fda7122483581f75881941f0e58"
+   }
+  },
+  {
+   "id": "one-char-replacement",
+   "title": "One character inside a longer object: \"Grade: A\" -> \"Grade: B\"",
+   "before": "one-char-replacement-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.48
+   },
+   "covers": [
+    "one-char",
+    "prefix"
+   ],
+   "notes": "",
+   "reference": "one-char-replacement-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Grade: A",
+    "find": "A",
+    "occurrence": 0,
+    "replace": "B",
+    "fit": false,
+    "expectedText": "Grade: B"
+   },
+   "sha256": {
+    "before": "21589797fe6858b51d4ffe57e704fe197facbfe9acde363998da11f163811363",
+    "reference": "fc7261e21c6859dffc600699623581738e79e185b2d6f7b8c3908475cc16d41c"
+   }
+  },
+  {
+   "id": "one-glyph-object",
+   "title": "One-glyph text object \"A\" -> \"B\" (SetPositions must be skipped: count 0 is rejected)",
+   "before": "one-glyph-object-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": false,
+    "naturalDelta": 0.0
+   },
+   "covers": [
+    "one-glyph",
+    "setpositions-count-0"
+   ],
+   "notes": "",
+   "reference": "one-glyph-object-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "A",
+    "find": "A",
+    "occurrence": 0,
+    "replace": "B",
+    "fit": false,
+    "expectedText": "B"
+   },
+   "sha256": {
+    "before": "21589797fe6858b51d4ffe57e704fe197facbfe9acde363998da11f163811363",
+    "reference": "8c4f83fb03807bff498acb0d51e58335a28a9c6dcf1100858d86bcc892eccacb"
+   }
+  },
+  {
+   "id": "p8-waveskern",
+   "title": "Phase 8 hard fixture WAVESKERN -> TOKYOLAKE (pure TJ kerning)",
+   "before": "p8-waveskern-before.pdf",
+   "reference": "p8-waveskern-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "WAVESKERN",
+    "find": "WAVESKERN",
+    "occurrence": 0,
+    "replace": "TOKYOLAKE",
+    "fit": false,
+    "expectedText": "TOKYOLAKE"
+   },
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": false,
+    "naturalDelta": 0.0
+   },
+   "covers": [
+    "phase8-baseline",
+    "full-replacement",
+    "tj-kerning-dropped-by-design"
+   ],
+   "notes": "Reference produced independently in Phase 8. Anchored layout of a full replacement equals natural advances, so this fixture alone cannot discriminate SetPositions; the Phase 8 V2 page keeps the legacy discrimination arm.",
+   "sha256": {
+    "before": "12f6055ccf4221a931cb4b8e48a16ba9150a782b229b6ee76adec3e16acab305",
+    "reference": "17202332e5b3531f568ea5166fe687368bca9dc5ef732d305876c3a4ed8882f9"
+   }
+  },
+  {
+   "id": "rotated-30",
+   "title": "Text rotated 30 degrees: \"APPROVED\" -> \"REJECTED\"",
+   "before": "rotated-30-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.7
+   },
+   "covers": [
+    "rotation",
+    "prefix"
+   ],
+   "notes": "",
+   "reference": "rotated-30-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Rotated stamp APPROVED",
+    "find": "APPROVED",
+    "occurrence": 0,
+    "replace": "REJECTED",
+    "fit": false,
+    "expectedText": "Rotated stamp REJECTED"
+   },
+   "sha256": {
+    "before": "e5cf8dbbcbb511ef2cfc767881422b7a0ad30c0940a4f19e06f87a101ad2e049",
+    "reference": "aabea4a188194966936c77dbb50da838d677cc7afc9fc5300b89e81bd9696001"
+   }
+  },
+  {
+   "id": "scaled-tm",
+   "title": "Scaled Tm (2x, 9 pt) inside a 0.8 cm: \"42\" -> \"4242\"",
+   "before": "scaled-tm-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.36
+   },
+   "covers": [
+    "scaled-tm",
+    "cm",
+    "prefix",
+    "suffix"
+   ],
+   "notes": "",
+   "reference": "scaled-tm-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Scaled label 42 units",
+    "find": "42",
+    "occurrence": 0,
+    "replace": "4242",
+    "fit": false,
+    "expectedText": "Scaled label 4242 units"
+   },
+   "sha256": {
+    "before": "7b08d57c3241fcaab39fbe0a4fe1af9006ffa9171d11792a7299c0aa88abe500",
+    "reference": "15b7085d45c44a73c73cf430ec7c026f7831f2dfd8bb83a1583d5295a0c06258"
+   }
+  },
+  {
+   "id": "state-tc",
+   "title": "Tc 0.6 pt (0.05 em): \"ABC-123\" -> \"XYZ-98765\"",
+   "before": "state-tc-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.48
+   },
+   "covers": [
+    "tc",
+    "shorter-to-longer",
+    "prefix"
+   ],
+   "notes": "",
+   "reference": "state-tc-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Reference code ABC-123",
+    "find": "ABC-123",
+    "occurrence": 0,
+    "replace": "XYZ-98765",
+    "fit": false,
+    "expectedText": "Reference code XYZ-98765"
+   },
+   "sha256": {
+    "before": "a5851b8f3bacae2cce6258c822a1e7e887fb5d93774350bee2ae260a807a5e4e",
+    "reference": "11d3df463dda82102b650b1a8c0d36b3814a70545a54041214ec70958f75d615"
+   }
+  },
+  {
+   "id": "state-tz150",
+   "title": "Tz 150: \"caption\" -> \"banner title\"",
+   "before": "state-tz150-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.36
+   },
+   "covers": [
+    "tz",
+    "real-spaces",
+    "suffix"
+   ],
+   "notes": "",
+   "reference": "state-tz150-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Condensed caption text",
+    "find": "caption",
+    "occurrence": 0,
+    "replace": "banner title",
+    "fit": false,
+    "expectedText": "Condensed banner title text"
+   },
+   "sha256": {
+    "before": "2f71c13fd4eeef67d1a0a6bf6ffd2e05817136a75997ea3502d30661cadd8bd2",
+    "reference": "f86e2e30b0f7840acd5c1cfd09a419db1b9ea01611e279beed1ce88e84364e7c"
+   }
+  },
+  {
+   "id": "state-tz80",
+   "title": "Tz 80: \"caption\" -> \"legend\" (prefix and suffix, Tz folded into Tm by the generator)",
+   "before": "state-tz80-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.36
+   },
+   "covers": [
+    "tz",
+    "prefix",
+    "suffix"
+   ],
+   "notes": "",
+   "reference": "state-tz80-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Condensed caption text",
+    "find": "caption",
+    "occurrence": 0,
+    "replace": "legend",
+    "fit": false,
+    "expectedText": "Condensed legend text"
+   },
+   "sha256": {
+    "before": "ab7ce8204c4dc05ad46c690b33b358ba886f1e794c427837833c9b85618ec815",
+    "reference": "7552485560d94ed3aee4ae2035c0cdd326e417de4af6f9756d368468e9dfb1f5"
+   }
+  },
+  {
+   "id": "std-differences",
+   "title": "Helvetica with /Differences remapping codes 65-71: \"HELLO\" -> \"WORLD\"",
+   "before": "std-differences-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.8
+   },
+   "covers": [
+    "differences",
+    "code-ne-unicode",
+    "f7-trap",
+    "prefix"
+   ],
+   "notes": "",
+   "reference": "std-differences-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Word: HELLO",
+    "find": "HELLO",
+    "occurrence": 0,
+    "replace": "WORLD",
+    "fit": false,
+    "expectedText": "Word: WORLD"
+   },
+   "sha256": {
+    "before": "cd72be022cd4cdbfa609422e4aaac05334261870cc3178bb7d30766914cae287",
+    "reference": "a42f620e3e9565975ba86253031fd8a8968e5464414d967b3825bd59696d5832"
+   }
+  },
+  {
+   "id": "tagged-mcid",
+   "title": "Tagged text (/P with MCID only): \"text\" -> \"content\"; BDC/EMC must survive",
+   "before": "tagged-mcid-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.36
+   },
+   "covers": [
+    "marked-content-mcid",
+    "prefix"
+   ],
+   "notes": "",
+   "reference": "tagged-mcid-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Tagged paragraph text",
+    "find": "text",
+    "occurrence": 0,
+    "replace": "content",
+    "fit": false,
+    "expectedText": "Tagged paragraph content"
+   },
+   "sha256": {
+    "before": "c3d01d360e23527e8ee0c0efa89c1106601848714c9e520818e5d83ad0dc053a",
+    "reference": "85dbd8261ec2c21c441e5b60cdfd92231ccf9a3dda73ac3648fdcf11985a4c3d"
+   }
+  },
+  {
+   "id": "ttf-astral-tw",
+   "title": "Simple embedded font mapping an astral character (U+10300) with Tw 4: \"mark\" -> \"new sign\" (UTF-16 indexing misplaces word spacing after the astral character)",
+   "before": "ttf-astral-tw-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.39
+   },
+   "covers": [
+    "astral",
+    "f9-trap",
+    "tw",
+    "real-spaces",
+    "embedded-truetype",
+    "code-ne-unicode",
+    "suffix"
+   ],
+   "notes": "",
+   "reference": "ttf-astral-tw-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Rune \ud800\udf00 mark here",
+    "find": "mark",
+    "occurrence": 0,
+    "replace": "new sign",
+    "fit": false,
+    "expectedText": "Rune \ud800\udf00 new sign here"
+   },
+   "sha256": {
+    "before": "56a2e16706f08c82b8b1af745a83a98f8f9b1de755d79c3ddcff340b3a09f369",
+    "reference": "a1fe17c7001d9db71e091a802a646b536e5dca51c04666b47bbe4bde73db2942"
+   }
+  },
+  {
+   "id": "ttf-custom-encoding",
+   "title": "Embedded TrueType with a custom encoding (codes 1..n, ToUnicode): \"KX-42\" -> \"ZQ-9001\"",
+   "before": "ttf-custom-encoding-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.52
+   },
+   "covers": [
+    "embedded-truetype",
+    "code-ne-unicode",
+    "f7-trap",
+    "shorter-to-longer"
+   ],
+   "notes": "",
+   "reference": "ttf-custom-encoding-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Order ref: KX-42",
+    "find": "KX-42",
+    "occurrence": 0,
+    "replace": "ZQ-9001",
+    "fit": false,
+    "expectedText": "Order ref: ZQ-9001"
+   },
+   "sha256": {
+    "before": "85a1b9b8528aae1d4053f81ddd042988dfbb9eb26232df219ea1f35b2ad4d4d0",
+    "reference": "3e7f06711a463bf02e6cebad55648d910c6c8f634b5ff864d22ed0552c73a1a3"
+   }
+  },
+  {
+   "id": "ttf-winansi-nonascii",
+   "title": "Embedded TrueType (WinAnsi): \"Caf\\u00e9 Z\\u00fcrich\" -> \"Cr\\u00e8me br\\u00fbl\\u00e9e \\u20ac4\" (euro: code 0x80 != U+20AC)",
+   "before": "ttf-winansi-nonascii-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.42
+   },
+   "covers": [
+    "embedded-truetype",
+    "non-ascii",
+    "code-ne-unicode",
+    "real-spaces",
+    "prefix"
+   ],
+   "notes": "",
+   "reference": "ttf-winansi-nonascii-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Menu: Caf\u00e9 Z\u00fcrich",
+    "find": "Caf\u00e9 Z\u00fcrich",
+    "occurrence": 0,
+    "replace": "Cr\u00e8me br\u00fbl\u00e9e \u20ac4",
+    "fit": false,
+    "expectedText": "Menu: Cr\u00e8me br\u00fbl\u00e9e \u20ac4"
+   },
+   "sha256": {
+    "before": "0cff287d0424cad76ba054dbe4025f4f1e7b969edb1eebb3797e045545390e0a",
+    "reference": "90cdee796a21cae9a576696d7251a97b8a43c6e01fa74df55c72a3a803736306"
+   }
+  },
+  {
+   "id": "untouched-mix",
+   "title": "Edit one object; untouched Tc, Tw, TJ kerning, rotation 90/45, cm scale, Tz 120, colour, rise and a path must not change",
+   "before": "untouched-mix-before.pdf",
+   "expect": {
+    "status": "committed",
+    "reasons": [],
+    "discriminating": true,
+    "naturalDelta": 0.48
+   },
+   "covers": [
+    "untouched-tc",
+    "untouched-tw",
+    "untouched-kerning",
+    "untouched-rotation",
+    "untouched-transform",
+    "untouched-tz",
+    "untouched-rise"
+   ],
+   "notes": "",
+   "reference": "untouched-mix-reference.pdf",
+   "edit": {
+    "page": 0,
+    "object": "Edit me here",
+    "find": "here",
+    "occurrence": 0,
+    "replace": "there and back",
+    "fit": false,
+    "expectedText": "Edit me there and back"
+   },
+   "sha256": {
+    "before": "996d46ee68f126a40f41c0c37d21b88c47d096bfae13a2a811a069176980513d",
+    "reference": "8f54792b7b0d5fbbc4499800a8084eafc0aaf04392b15755af195173faf1ad90"
+   }
+  },
+  {
+   "id": "blocked-actualtext",
+   "title": "Marked content with /ActualText (extraction would disagree with the glyphs)",
+   "before": "blocked-actualtext-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "marked-content-ambiguous",
+     "marked-content-actualtext"
+    ]
+   },
+   "covers": [
+    "gate-marked-content"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Displayed words",
+    "find": "words",
+    "occurrence": 0,
+    "replace": "texts",
+    "fit": false
+   },
+   "sha256": {
+    "before": "bd7ab07de4804c0594fc6983378a6f45b7a821e78c0bb7de720f487a556be74e"
+   }
+  },
+  {
+   "id": "blocked-clip",
+   "title": "Target text drawn under a clipping path",
+   "before": "blocked-clip-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "target-clipped"
+    ]
+   },
+   "covers": [
+    "gate-clip"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Clipped cell value 99",
+    "find": "99",
+    "occurrence": 0,
+    "replace": "100",
+    "fit": false
+   },
+   "sha256": {
+    "before": "3df7b7c49d3bf8f9be43ad3f7540769855787daf32193d4be98041fa2a073414"
+   }
+  },
+  {
+   "id": "blocked-collision",
+   "title": "Longer value would run into the next object on the same line",
+   "before": "blocked-collision-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "collision-with-neighbour"
+    ]
+   },
+   "covers": [
+    "gate-collision"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "INV-2026-0012345",
+    "fit": false
+   },
+   "sha256": {
+    "before": "7aa3d747a25b22bfad7047dc938cefd109a8862f48c30fa88cd9c0c72659d548"
+   }
+  },
+  {
+   "id": "blocked-encrypted-restricted",
+   "title": "Encrypted (AES-256, empty user password) with modification not permitted",
+   "before": "blocked-encrypted-restricted-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "encrypted-document",
+     "permissions-restrict-modify"
+    ]
+   },
+   "covers": [
+    "gate-permissions"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "INV-2026-0012345",
+    "fit": false
+   },
+   "sha256": {
+    "before": "93aae2841eceaa4485f85a5d84c11ef2cc6e495d4515d7ea806aec98201f08f7"
+   }
+  },
+  {
+   "id": "blocked-form-xobject",
+   "title": "Target text lives inside a Form XObject (possibly shared appearance)",
+   "before": "blocked-form-xobject-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "text-in-form-xobject"
+    ]
+   },
+   "covers": [
+    "gate-form-xobject"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Form text 123",
+    "find": "123",
+    "occurrence": 0,
+    "replace": "456",
+    "fit": false
+   },
+   "sha256": {
+    "before": "e4d6a38e2cb6936e977b29114341dda09bafc6d5ecded3fbd59fcdd7cd045228"
+   }
+  },
+  {
+   "id": "blocked-glyph-missing",
+   "title": "Embedded subset lacks glyphs needed by the replacement (\"Cafe\" -> \"Zoo\")",
+   "before": "blocked-glyph-missing-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "glyph-not-in-font-subset"
+    ]
+   },
+   "covers": [
+    "gate-glyph-availability"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Menu: Cafe",
+    "find": "Cafe",
+    "occurrence": 0,
+    "replace": "Zoo",
+    "fit": false
+   },
+   "sha256": {
+    "before": "73bc014dbf43b67b21c2222af7cd5c84d46e89b5b18f28a9cf634aa7837c707e"
+   }
+  },
+  {
+   "id": "blocked-image-only",
+   "title": "Scanned / image-only page",
+   "before": "blocked-image-only-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "no-editable-text"
+    ]
+   },
+   "covers": [
+    "gate-scanned"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "",
+    "find": "",
+    "occurrence": 0,
+    "replace": "x",
+    "fit": false
+   },
+   "sha256": {
+    "before": "3c2d19ea93c556f804490512d21073c7ff817a02f7fb4aa3ce1abaef50b26b78"
+   }
+  },
+  {
+   "id": "blocked-no-unicode-map",
+   "title": "Symbolic embedded TrueType without /Encoding or /ToUnicode",
+   "before": "blocked-no-unicode-map-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "font-no-unicode-map"
+    ]
+   },
+   "covers": [
+    "gate-font-mapping"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Symbolic words",
+    "find": "words",
+    "occurrence": 0,
+    "replace": "terms",
+    "fit": false
+   },
+   "sha256": {
+    "before": "37bf7f4604baecbeb444a5aca84d4a0f8c18ad55977eaa9633cd4b1e17fe2955"
+   }
+  },
+  {
+   "id": "blocked-ocr-invisible",
+   "title": "Scanned page with an invisible OCR text layer (Tr 3)",
+   "before": "blocked-ocr-invisible-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "invisible-text",
+     "no-editable-text"
+    ]
+   },
+   "covers": [
+    "gate-scanned",
+    "gate-invisible"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Scanned invoice 777",
+    "find": "777",
+    "occurrence": 0,
+    "replace": "778",
+    "fit": false
+   },
+   "sha256": {
+    "before": "15fe90a7b1dd7d3a02d041546d31f82b1d09f16d204b9f644c7be48f4e51958c"
+   }
+  },
+  {
+   "id": "blocked-optional-content",
+   "title": "Target text inside an optional content group",
+   "before": "blocked-optional-content-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "optional-content"
+    ]
+   },
+   "covers": [
+    "gate-optional-content"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Layered words",
+    "find": "words",
+    "occurrence": 0,
+    "replace": "terms",
+    "fit": false
+   },
+   "sha256": {
+    "before": "e5b992f98ad191dca67d7b3323c70e3da13a1c2c70a1f1fb9b3ba60130ed2127"
+   }
+  },
+  {
+   "id": "blocked-page-rotate",
+   "title": "Page /Rotate 90 (not yet validated)",
+   "before": "blocked-page-rotate-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "page-rotation-not-validated"
+    ]
+   },
+   "covers": [
+    "gate-page-rotation"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Rotated page text",
+    "find": "text",
+    "occurrence": 0,
+    "replace": "copy",
+    "fit": false
+   },
+   "sha256": {
+    "before": "7add16fa63b7729c89be5a70012bbc64a07c9e407d35b664fc0aca376fd71982"
+   }
+  },
+  {
+   "id": "blocked-shared-content",
+   "title": "Two pages share one content stream (edit would change both)",
+   "before": "blocked-shared-content-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "shared-content-stream"
+    ]
+   },
+   "covers": [
+    "gate-shared"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Shared content 42",
+    "find": "42",
+    "occurrence": 0,
+    "replace": "43",
+    "fit": false
+   },
+   "sha256": {
+    "before": "f6cfc787f07d6c377f0b1cb6bb4c0b8158af8c505b6018683df75b1706f211b7"
+   }
+  },
+  {
+   "id": "blocked-signed",
+   "title": "Signed document (signature field)",
+   "before": "blocked-signed-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "signed-document"
+    ]
+   },
+   "covers": [
+    "gate-signature"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "INV-2026-0012345",
+    "fit": false
+   },
+   "sha256": {
+    "before": "204936a5327220cc2b556c24709aa047085f8ce6647542e55318150d7085deb3"
+   }
+  },
+  {
+   "id": "blocked-std14-no-widths-euro",
+   "title": "Helvetica without /Widths: the Euro width differs between PDFium (667) and AFM/PDF.js (556)",
+   "before": "blocked-std14-no-widths-euro-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "metrics-disagree"
+    ]
+   },
+   "covers": [
+    "gate-metrics"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Price: 5 EUR each",
+    "find": "5 EUR",
+    "occurrence": 0,
+    "replace": "\u20ac5",
+    "fit": false
+   },
+   "sha256": {
+    "before": "f32eeb6a2d76720e5a6a9b80a1b6485aec7c8ec2d3287fa92ddc6b91ac072ae6"
+   }
+  },
+  {
+   "id": "blocked-text-rise",
+   "title": "Target text with a text rise (Ts 3)",
+   "before": "blocked-text-rise-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "text-rise-not-validated"
+    ]
+   },
+   "covers": [
+    "gate-rise"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Raised note",
+    "find": "note",
+    "occurrence": 0,
+    "replace": "memo",
+    "fit": false
+   },
+   "sha256": {
+    "before": "a3c7af6968bf3392cf62dc3c52044970c3582006945a1fba4e3161f6f35b5cbb"
+   }
+  },
+  {
+   "id": "blocked-tracked-text",
+   "title": "Tracked text Tc 1.5 pt at 12 pt: PDF.js already splits every glyph",
+   "before": "blocked-tracked-text-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "original-extraction-inconsistent-pdfjs",
+     "tracked-text"
+    ]
+   },
+   "covers": [
+    "gate-semantic-gap"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Tracked heading text",
+    "find": "heading",
+    "occurrence": 0,
+    "replace": "title",
+    "fit": false
+   },
+   "sha256": {
+    "before": "576bef2abcb03963c922aefb71169014c7964b9bf256a6ed8a65f9923fc00efa"
+   }
+  },
+  {
+   "id": "blocked-type3",
+   "title": "Type3 font",
+   "before": "blocked-type3-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "font-type3"
+    ]
+   },
+   "covers": [
+    "gate-type3"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "abab",
+    "find": "ab",
+    "occurrence": 0,
+    "replace": "ba",
+    "fit": false
+   },
+   "sha256": {
+    "before": "d6668883209b43c48e5eccc737212fa3e6999f8b6247fc83585d1fbbde40f854"
+   }
+  },
+  {
+   "id": "blocked-vertical",
+   "title": "Vertical writing (Type0 Identity-V)",
+   "before": "blocked-vertical-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "font-vertical"
+    ]
+   },
+   "covers": [
+    "gate-vertical"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Vertical text",
+    "find": "text",
+    "occurrence": 0,
+    "replace": "copy",
+    "fit": false
+   },
+   "sha256": {
+    "before": "edb58bb14107648e0efb5e567b1a9198531c0755c6844c72dcc5dc112e845656"
+   }
+  },
+  {
+   "id": "input-combining",
+   "title": "Input rejection: combining-mark-unsupported",
+   "before": "invoice-number-longer-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "combining-mark-unsupported"
+    ]
+   },
+   "covers": [
+    "input-validation",
+    "f9"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "e\u0301",
+    "fit": false
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80"
+   }
+  },
+  {
+   "id": "input-empty",
+   "title": "Input rejection: empty-replacement",
+   "before": "invoice-number-longer-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "empty-replacement"
+    ]
+   },
+   "covers": [
+    "input-validation",
+    "f9"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "",
+    "fit": false
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80"
+   }
+  },
+  {
+   "id": "input-line-break",
+   "title": "Input rejection: line-break-unsupported",
+   "before": "invoice-number-longer-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "line-break-unsupported"
+    ]
+   },
+   "covers": [
+    "input-validation",
+    "f9"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "12\n345",
+    "fit": false
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80"
+   }
+  },
+  {
+   "id": "input-lone-surrogate",
+   "title": "Input rejection: invalid-unicode",
+   "before": "invoice-number-longer-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "invalid-unicode"
+    ]
+   },
+   "covers": [
+    "input-validation",
+    "f9"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "12\ud800",
+    "fit": false
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80"
+   }
+  },
+  {
+   "id": "input-rtl",
+   "title": "Input rejection: rtl-unsupported",
+   "before": "invoice-number-longer-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "rtl-unsupported"
+    ]
+   },
+   "covers": [
+    "input-validation",
+    "f9"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "\u05e9\u05dc\u05d5\u05dd",
+    "fit": false
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80"
+   }
+  },
+  {
+   "id": "input-zwj",
+   "title": "Input rejection: format-character-unsupported",
+   "before": "invoice-number-longer-before.pdf",
+   "expect": {
+    "status": "blocked",
+    "reasons": [
+     "format-character-unsupported"
+    ]
+   },
+   "covers": [
+    "input-validation",
+    "f9"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Invoice Number: 12345",
+    "find": "12345",
+    "occurrence": 0,
+    "replace": "12\u200d3",
+    "fit": false
+   },
+   "sha256": {
+    "before": "0a63b97ae75a5b94bc5a875e1f2af7cedc551ab7cb71e1ce900c3bb8569acf80"
+   }
+  },
+  {
+   "id": "rejected-untouched-grouping",
+   "title": "Untouched Tz 150 object with 0.08 em kerning: regeneration writes Tz into Tm and PDF.js stops splitting it",
+   "before": "rejected-untouched-grouping-before.pdf",
+   "expect": {
+    "status": "rejected",
+    "reasons": [
+     "V12"
+    ]
+   },
+   "covers": [
+    "untouched-pdfjs-grouping",
+    "fail-closed-verification"
+   ],
+   "notes": "",
+   "edit": {
+    "page": 0,
+    "object": "Editable line",
+    "find": "line",
+    "occurrence": 0,
+    "replace": "row",
+    "fit": false
+   },
+   "sha256": {
+    "before": "b72865f90b0dd68a161450b3f3707205f440ca7fd8a32738e59b97382ae51d5a"
+   }
+  }
+ ]
+}
