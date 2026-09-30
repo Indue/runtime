@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en-AU" data-phase10="corpus-1">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; media-src 'none'; manifest-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <title>NoblePDF True Edit - Phase 10 real-PDF corpus harness (lab)</title>
+  <script src="phase8-csp-guard.js?v=1"></script>
+  <script src="phase10-net-guard.js?v=1"></script>
+  <link rel="stylesheet" href="phase8.css?v=2">
+  <link rel="stylesheet" href="phase9.css?v=1">
+  <link rel="stylesheet" href="phase10.css?v=1">
+  <script src="/vendor/pdfjs-3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"></script>
+</head>
+<body>
+<main class="shell">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">NoblePDF engineering lab - Phase 10</p>
+      <h1>Real-PDF corpus harness (local only)</h1>
+      <p class="lede">Choose PDFs from this computer. Each file is read with the browser File API and analysed here with the same Run #10 PDFium engine, PDF.js 3.11.174, independent parser and Phase 9 gates as the fixture suite. Every direct text object is classified SUPPORTED, BLOCKED (with every Phase 9 gate code) or UNKNOWN. A supported object can be edit-tested through the full Phase 9 transaction and verifier; only a fully verified result replaces the working copy. Engineering diagnostics only: nothing here is the public editor.</p>
+    </div>
+    <div class="privacy-badge">Local only - no upload</div>
+  </header>
+
+  <section class="card warning-card">
+    <h2>Safety boundary and preflight</h2>
+    <p>Selected PDFs never leave this browser: there is no upload code, the CSP allows no cross-origin connection and no form submission, and a network guard loaded before everything else records every request and refuses any request that carries a body. Corpus processing stays disabled unless the engine, PDF.js, CSP, script and network checks all pass and no service worker controls the page.</p>
+    <div id="privacyStatus" class="status-line">Checking runtime...</div>
+    <div class="button-row"><button id="start" class="primary" type="button">Run preflight (verify engine and privacy)</button></div>
+    <div class="summary-grid six">
+      <div><span>Engine identity</span><strong id="identityStatus">-</strong></div>
+      <div><span>API surface</span><strong id="apiStatus">-</strong></div>
+      <div><span>PDF.js</span><strong id="pdfjsStatus">-</strong></div>
+      <div><span>Privacy / CSP / network</span><strong id="privacyGate">-</strong></div>
+      <div><span>Service worker</span><strong id="swStatus">-</strong></div>
+      <div><span>Ready</span><strong id="readyStatus">NO</strong></div>
+    </div>
+    <pre id="preflightReport">Not run.</pre>
+  </section>
+
+  <section class="card">
+    <h2>1. Choose PDFs (read locally)</h2>
+    <p class="muted">Files are read with File.arrayBuffer() only. Several files can be chosen at once; each keeps its own original bytes, working copy, selection and edit history.</p>
+    <div class="button-row">
+      <input id="files" type="file" accept="application/pdf,.pdf" multiple disabled>
+      <label class="inline"><input id="quick" type="checkbox"> Quick mode (skip the planning probe: gate-passing objects stay UNKNOWN)</label>
+      <label class="inline">Pages to analyse <select id="maxPages"><option value="0">all</option><option value="10">first 10</option><option value="50">first 50</option></select></label>
+    </div>
+    <div id="drop" class="drop-zone" aria-disabled="true">Or drop PDF files here (read locally)</div>
+    <div id="loadStatus" class="status-line">Run the preflight first.</div>
+  </section>
+
+  <section class="card">
+    <h2>2. Session summary</h2>
+    <div class="summary-grid">
+      <div><span>Documents tested</span><strong id="sDocs">0</strong></div>
+      <div><span>Pages</span><strong id="sPages">0</strong></div>
+      <div><span>Text objects</span><strong id="sObjects">0</strong></div>
+      <div><span>Supported / blocked / unknown</span><strong id="sSplit">0 / 0 / 0</strong></div>
+      <div><span>Successful edit tests</span><strong id="sEdits">0</strong></div>
+      <div><span>Verifier rejections</span><strong id="sRejected">0</strong></div>
+      <div><span>Editable text (objects)</span><strong id="sPct">-</strong></div>
+      <div><span>Documents with a safe True Edit</span><strong id="sSafe">0</strong></div>
+    </div>
+    <pre id="sessionReport">No documents yet.</pre>
+  </section>
+
+  <section class="card">
+    <h2>3. Documents</h2>
+    <div class="table-wrap">
+      <table class="compact">
+        <thead><tr><th>Document</th><th>Size</th><th>SHA-256</th><th>PDF</th><th>Pages</th><th>Encrypted</th><th>Signatures</th><th>Revisions</th><th>Xref</th><th>Text objects</th><th>Supported</th><th>Blocked</th><th>Unknown</th><th>Editable</th><th>Safe edit</th><th>Status</th></tr></thead>
+        <tbody id="docsBody"><tr><td colspan="16">No documents.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>4. Document report</h2>
+    <p id="docTitle" class="muted">Select a document row.</p>
+    <pre id="docReport">-</pre>
+    <h3>Fonts</h3>
+    <div class="table-wrap"><table class="compact"><thead><tr><th>Font</th><th>Kind</th><th>Embedded</th><th>Subset</th><th>Encoding</th><th>ToUnicode</th><th>Vertical</th><th>Font file</th><th>Class</th><th>Status</th><th>Shows</th><th>Pages</th></tr></thead><tbody id="fontsBody"></tbody></table></div>
+    <h3>Pages</h3>
+    <div class="table-wrap"><table class="compact"><thead><tr><th>Page</th><th>Size (pt)</th><th>Rotation</th><th>Objects (text/path/image/form/shading)</th><th>Annotations</th><th>Marked text</th><th>Optional content</th><th>Form text</th><th>Supported / blocked / unknown</th><th>Page gates</th></tr></thead><tbody id="pagesBody"></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>5. Text object inspector and supported edit test</h2>
+    <div class="editor-grid">
+      <div>
+        <div class="button-row">
+          <select id="pageSel" disabled><option value="">Page...</option></select>
+          <select id="objFilter"><option value="all">all objects</option><option value="supported">supported</option><option value="blocked">blocked</option><option value="unknown">unknown</option></select>
+          <span class="legend"><span class="sw sup"></span> supported <span class="sw blk"></span> blocked <span class="sw unk"></span> unknown</span>
+        </div>
+        <p id="pageStatus" class="muted small">No page.</p>
+        <div id="pageWrap" class="page-wrap"><canvas id="page"></canvas></div>
+        <div class="table-wrap objlist"><table class="compact"><thead><tr><th>#</th><th>Status</th><th>Text</th><th>Font</th><th>Size</th><th>Codes</th></tr></thead><tbody id="objBody"></tbody></table></div>
+      </div>
+      <div class="edit-panel">
+        <h2>Selected object</h2>
+        <p id="hint" class="muted small">Click a line of text on the page or a row in the list.</p>
+        <pre id="inspector" class="inspector">-</pre>
+        <ul id="reasons" class="reasons small"></ul>
+        <label for="text">Replacement text (whole object)</label>
+        <input id="text" type="text" autocomplete="off" spellcheck="false" disabled>
+        <label><input id="fit" type="checkbox" disabled> Keep the original width (fit over spaces)</label>
+        <div class="button-row">
+          <button id="apply" class="primary" type="button" disabled>Run verified edit test</button>
+          <button id="undo" class="secondary" type="button" disabled>Undo</button>
+          <button id="reset" class="secondary" type="button" disabled>Reset to original</button>
+          <button id="download" class="secondary" type="button" disabled>Download verified PDF</button>
+        </div>
+        <div id="result" class="status-line">-</div>
+        <ol id="stages" class="stages small"></ol>
+        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Check</th><th>Result</th></tr></thead><tbody id="checks"></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>6. Export corpus report</h2>
+    <p class="muted">The export is a JSON diagnostic report for aggregating many PDFs. By default it contains no PDF bytes, no file names, no document text and no reason details (details can quote document text). Hashes, counts, codes, font facts and text-state numbers are always included.</p>
+    <div class="button-row">
+      <label class="inline"><input id="optNames" type="checkbox"> Include file names</label>
+      <label class="inline">Text samples <select id="optSamples"><option value="none">none (default)</option><option value="redacted">redacted shape only (Aaaa 99)</option><option value="plain">plain, max 24 characters, plus reason details</option></select></label>
+      <label class="inline"><input id="optGen" type="checkbox" checked> Include Producer/Creator strings</label>
+    </div>
+    <div class="button-row"><button id="export" class="primary" type="button" disabled>Export corpus report (JSON)</button> <button id="copySummary" class="secondary" type="button" disabled>Copy text summary</button></div>
+    <div id="exportStatus" class="status-line">-</div>
+  </section>
+
+  <section class="card">
+    <h2>7. Network, script and privacy audit</h2>
+    <pre id="networkResults">Checking...</pre>
+  </section>
+  <footer><p>Phase 10 is an isolated engineering lab. The production NoblePDF editor is not modified. Results describe the tested files only.</p></footer>
+</main>
+<script type="module" src="phase10-corpus.js?v=1"></script>
+</body>
+</html>

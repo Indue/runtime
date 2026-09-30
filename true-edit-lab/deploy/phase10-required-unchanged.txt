@@ -1,0 +1,16 @@
+cc96b988baa831a1db218df23b1d0cfa578ad77062f138507aa06a4baefa789f lab/true-text-edit/te-data.mjs
+10aa8c00adb32b15b6a6ec7d827cc8edab1f352e8a45bfc3f456d22105f5b16f lab/true-text-edit/te-ttf.mjs
+8a2a4b4abcb63454bcc399e03d14e305a3ac53680cbcc40647622a68f8913af9 lab/true-text-edit/te-pdf.mjs
+a98a85d126f96d7cf1bb188e0fefc58eb5b3d1d87545b400fd90b57cd36a9000 lab/true-text-edit/te-edit.mjs
+350c569a4ad5cc9550a82575a476b9b26970ab281e043888d7b23ae021702b68 lab/true-text-edit/te-engine.mjs
+3e620d902bee21f5e942e9cd0e5031e8dec5956d36d28b96f0a7b788c7c8aa7a lab/true-text-edit/te-pipeline.mjs
+fa59cca2fb2ca8e1ec03e4f4716de882d595bb23c1ee35c3a6562c9e950317de lab/true-text-edit/te-render.mjs
+268fb02432cf530003b645e74020001ecb14b2da06ec36bf35a6394c82e77114 lab/true-text-edit/te-env.mjs
+c9765945abc2d70aece509744b3b2f28d8d789f530e180e23a118c3e7e4e7783 lab/true-text-edit/phase9.css
+67721e5d2862fdaae76c51fadc19951e9922586cdd71d97a8736578f77dc35d5 lab/true-text-edit/phase8-verify.mjs
+8dd27a70889f0bce12c076bb7bbc8073807ffd6a00f6a0f83b01331b12c71a7d lab/true-text-edit/phase8-csp-guard.js
+ANY lab/true-text-edit/phase8.css
+2af28659a83b5691ed1193bd0819a6a1339036fb08505826d561c7541762baf2 vendor/pdfium-2.15.1-setpositions/index.js
+c4f54bda9bc730c0aeb6579254f0431fa95886478cd19967555be6ea2a35ce11 vendor/pdfium-2.15.1-setpositions/pdfium.wasm
+5b5799e6f8c680663207ac5b42ee14eed2a406fa7af48f50c154f0c0b1566946 vendor/pdfjs-3.11.174/pdf.min.js
+feabdf309770ed24bba31a5467836cdc8cf639c705af27d52b585b041bb8527b vendor/pdfjs-3.11.174/pdf.worker.min.js

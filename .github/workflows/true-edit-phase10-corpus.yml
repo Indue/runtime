@@ -1,0 +1,62 @@
+# NoblePDF True Edit Phase 10 corpus harness CI. Lab only: nothing is deployed.
+# Runs the Phase 10 sequence (tests/run-phase10.sh) on the hash-pinned Run #10 engine: the
+# Phase 9 frozen-file check, deploy lists, page references, Node corpus tests (all 47 Phase 9
+# fixtures through the corpus path), deploy/rollback, the Phase 10 browser harness and the
+# ASCII check. The unchanged Phase 9 sequence runs in true-edit-phase9-lab.yml on the same
+# push. Builds the Phase 10 deploy package as an artifact (download, audit, deploy by hand).
+name: true-edit-phase10-corpus
+on:
+  workflow_dispatch:
+  push:
+    paths: ['true-edit-lab/**', '.github/workflows/true-edit-phase10-corpus.yml']
+  pull_request:
+    paths: ['true-edit-lab/**', '.github/workflows/true-edit-phase10-corpus.yml']
+permissions:
+  contents: read
+env:
+  PKG: true-edit-lab
+jobs:
+  phase10-corpus:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: ${{ env.PKG }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test dependencies (pdfjs-dist 3.11.174 / 4.10.38 / 6.3.289, @embedpdf/pdfium 2.15.1)
+        run: npm install --no-audit --no-fund --prefix tests
+      - name: Patched engine (hash-pinned Run #10)
+        run: sh tests/tools/fetch-engine.sh "${{ vars.PATCHED_ENGINE_BASE_URL || 'https://app.noblepdf.com/vendor/pdfium-2.15.1-setpositions/' }}"
+      - name: Playwright Chromium
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Phase 10 sequence (frozen Phase 9 files, lists, refs, Node corpus tests, deploy, browser, ASCII)
+        run: sh tests/run-phase10.sh
+      - name: Build the Phase 10 deploy package
+        if: success()
+        run: python3 tests/tools/build_phase10_package.py "$RUNNER_TEMP/phase10-package"
+      - name: Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: true-edit-phase10-results
+          path: ${{ env.PKG }}/tests/results/phase10-*
+          retention-days: 30
+      - name: Package
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: noblepdf-trueedit-phase10-corpus-lab-v1
+          path: ${{ runner.temp }}/phase10-package/noblepdf-trueedit-phase10-corpus-lab-v1.zip
+          retention-days: 30
